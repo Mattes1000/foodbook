@@ -1,0 +1,11 @@
+node_modules/
+client/node_modules/
+server/node_modules/
+client/dist/
+server/foodbook.db
+server/foodbook.db-wal
+server/foodbook.db-shm
+*.db
+*.db-wal
+*.db-shm
+.env

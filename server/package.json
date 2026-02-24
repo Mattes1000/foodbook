@@ -1,0 +1,15 @@
+{
+  "name": "server",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "types": "bun",
+  "scripts": {
+    "dev": "bun run src/seed.ts && bun --hot src/index.ts",
+    "start": "bun run src/seed.ts && bun src/index.ts",
+    "seed": "bun run src/seed.ts"
+  },
+  "devDependencies": {
+    "bun-types": "latest"
+  }
+}

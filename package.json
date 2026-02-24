@@ -1,0 +1,17 @@
+{
+  "name": "foodbook",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n server,client -c green,cyan \"bun --cwd server run dev\" \"bun --cwd client run dev\"",
+    "dev:server": "bun --cwd server run dev",
+    "dev:client": "bun --cwd client run dev",
+    "build": "bun --cwd client run build",
+    "start": "bun --cwd server run src/seed.ts && bun --cwd server src/index.ts",
+    "lint": "bun --cwd client run lint"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
+  }
+}
