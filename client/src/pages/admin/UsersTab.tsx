@@ -2,11 +2,46 @@ import { useState, useEffect, useRef } from "react";
 import QRCode from "qrcode";
 import { getUsers, createUser, updateUser, deleteUser } from "../../api";
 import type { User } from "../../types";
+import {
+  Box,
+  Typography,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Button,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  CircularProgress,
+  Snackbar,
+  Alert,
+  Card,
+  CardContent,
+  IconButton,
+} from "@mui/material";
+import { QrCode2, Edit, Delete } from "@mui/icons-material";
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "Admin",
   manager: "Manager",
   user: "Benutzer",
+};
+
+const ROLE_COLORS: Record<string, "error" | "info" | "default"> = {
+  admin: "error",
+  manager: "info",
+  user: "default",
 };
 
 const EMPTY_FORM = { firstname: "", lastname: "", role: "user" };
@@ -76,164 +111,176 @@ export default function UsersTab() {
   };
 
   return (
-    <div className="flex gap-6">
-      {/* Table */}
-      <div className="flex-1 min-w-0">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Benutzerverwaltung</h2>
+    <Box sx={{ display: "flex", gap: 3 }}>
+      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+        <Typography variant="h2" sx={{ mb: 3 }}>
+          Benutzerverwaltung
+        </Typography>
+
         {loading ? (
-          <p className="text-gray-400">Lade Benutzer…</p>
+          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+            <CircularProgress />
+          </Box>
         ) : (
-          <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600">Name</th>
-                  <th className="text-left px-4 py-3 font-semibold text-gray-600">Rolle</th>
-                  <th className="px-4 py-3"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Name</TableCell>
+                  <TableCell>Rolle</TableCell>
+                  <TableCell align="right">Aktionen</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
                 {users.map((u) => (
-                  <tr key={u.id} className="hover:bg-orange-50 transition">
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-gray-800">{u.firstname} {u.lastname}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                        u.role === "admin" ? "bg-red-100 text-red-600" :
-                        u.role === "manager" ? "bg-blue-100 text-blue-600" :
-                        "bg-gray-100 text-gray-500"
-                      }`}>
-                        {ROLE_LABELS[u.role]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1 justify-end">
-                        <button
+                  <TableRow key={u.id} hover>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {u.firstname} {u.lastname}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={ROLE_LABELS[u.role]}
+                        color={ROLE_COLORS[u.role]}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Box sx={{ display: "flex", gap: 0.5, justifyContent: "flex-end" }}>
+                        <IconButton
+                          size="small"
+                          color="success"
                           onClick={() => setQrModal(u)}
-                          className="px-2 py-1 text-xs bg-green-50 text-green-600 rounded hover:bg-green-100 transition"
                         >
-                          QR-Code
-                        </button>
-                        <button
+                          <QrCode2 fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          color="primary"
                           onClick={() => openEdit(u)}
-                          className="px-2 py-1 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition"
                         >
-                          Bearbeiten
-                        </button>
-                        <button
+                          <Edit fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          color="error"
                           onClick={() => handleDelete(u)}
-                          className="px-2 py-1 text-xs bg-red-50 text-red-500 rounded hover:bg-red-100 transition"
                         >
-                          Löschen
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                          <Delete fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
                 ))}
                 {users.length === 0 && (
-                  <tr>
-                    <td colSpan={3} className="px-4 py-6 text-center text-gray-400">
-                      Keine Benutzer vorhanden.
-                    </td>
-                  </tr>
+                  <TableRow>
+                    <TableCell colSpan={3} align="center">
+                      <Typography color="text.secondary">
+                        Keine Benutzer vorhanden.
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
                 )}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
-      </div>
+      </Box>
 
-      {/* Form */}
-      <div className="w-72 shrink-0">
-        <div className="sticky top-6 bg-white rounded-xl shadow border border-gray-100 p-5">
-          <h3 className="font-bold text-gray-800 mb-4">
-            {editId !== null ? "Benutzer bearbeiten" : "Neuer Benutzer"}
-          </h3>
+      <Box sx={{ width: 320, flexShrink: 0 }}>
+        <Card sx={{ position: "sticky", top: 24 }}>
+          <CardContent>
+            <Typography variant="h6" sx={{ mb: 3, fontWeight: 700 }}>
+              {editId !== null ? "Benutzer bearbeiten" : "Neuer Benutzer"}
+            </Typography>
 
-          <label className="block text-sm text-gray-600 mb-1">Vorname</label>
-          <input
-            value={form.firstname}
-            onChange={(e) => setForm((f) => ({ ...f, firstname: e.target.value }))}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-orange-300"
-            placeholder="z.B. Maria"
-          />
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Vorname"
+                value={form.firstname}
+                onChange={(e) => setForm((f) => ({ ...f, firstname: e.target.value }))}
+                placeholder="z.B. Maria"
+              />
 
-          <label className="block text-sm text-gray-600 mb-1">Nachname</label>
-          <input
-            value={form.lastname}
-            onChange={(e) => setForm((f) => ({ ...f, lastname: e.target.value }))}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-orange-300"
-            placeholder="z.B. Müller"
-          />
+              <TextField
+                fullWidth
+                size="small"
+                label="Nachname"
+                value={form.lastname}
+                onChange={(e) => setForm((f) => ({ ...f, lastname: e.target.value }))}
+                placeholder="z.B. Müller"
+              />
 
-          <label className="block text-sm text-gray-600 mb-1">Rolle</label>
-          <select
-            value={form.role}
-            onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-orange-300"
+              <FormControl fullWidth size="small">
+                <InputLabel>Rolle</InputLabel>
+                <Select
+                  value={form.role}
+                  label="Rolle"
+                  onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
+                >
+                  <MenuItem value="user">Benutzer</MenuItem>
+                  <MenuItem value="manager">Manager</MenuItem>
+                  <MenuItem value="admin">Admin</MenuItem>
+                </Select>
+              </FormControl>
+
+              <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  onClick={handleSave}
+                  disabled={saving || !form.firstname.trim() || !form.lastname.trim()}
+                >
+                  {saving ? "Speichere…" : editId !== null ? "Speichern" : "Erstellen"}
+                </Button>
+                {editId !== null && (
+                  <Button variant="outlined" onClick={resetForm}>
+                    Abbrechen
+                  </Button>
+                )}
+              </Box>
+            </Box>
+          </CardContent>
+        </Card>
+      </Box>
+
+      <Dialog open={!!qrModal} onClose={() => setQrModal(null)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ textAlign: "center" }}>
+          {qrModal?.firstname} {qrModal?.lastname}
+        </DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+          <Typography variant="caption" color="text.secondary" textAlign="center">
+            QR-Code scannen zum Anmelden
+          </Typography>
+          <canvas ref={qrCanvasRef} style={{ borderRadius: 8 }} />
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ fontFamily: "monospace", wordBreak: "break-all", textAlign: "center" }}
           >
-            <option value="user">Benutzer</option>
-            <option value="manager">Manager</option>
-            <option value="admin">Admin</option>
-          </select>
+            /login/{qrModal?.qr_token}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setQrModal(null)} fullWidth>
+            Schließen
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-          <div className="flex gap-2">
-            <button
-              onClick={handleSave}
-              disabled={saving || !form.firstname.trim() || !form.lastname.trim()}
-              className="flex-1 bg-orange-500 text-white py-2 rounded-lg font-semibold hover:bg-orange-600 transition disabled:opacity-40 text-sm"
-            >
-              {saving ? "Speichere…" : editId !== null ? "Speichern" : "Erstellen"}
-            </button>
-            {editId !== null && (
-              <button
-                onClick={resetForm}
-                className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition text-sm"
-              >
-                Abbrechen
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* QR Modal */}
-      {qrModal && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-          onClick={() => setQrModal(null)}
-        >
-          <div
-            className="bg-white rounded-2xl shadow-xl p-8 flex flex-col items-center gap-4 max-w-xs w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-bold text-gray-800">
-              {qrModal.firstname} {qrModal.lastname}
-            </h3>
-            <p className="text-xs text-gray-500 text-center">
-              QR-Code scannen zum Anmelden
-            </p>
-            <canvas ref={qrCanvasRef} className="rounded-lg" />
-            <p className="text-xs text-gray-400 break-all text-center font-mono">
-              /login/{qrModal.qr_token}
-            </p>
-            <button
-              onClick={() => setQrModal(null)}
-              className="w-full bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 transition text-sm font-medium"
-            >
-              Schließen
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Toast */}
-      {toast && (
-        <div className="fixed bottom-6 right-6 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg text-sm">
+      <Snackbar
+        open={!!toast}
+        autoHideDuration={3000}
+        onClose={() => setToast(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert severity="success" onClose={() => setToast(null)}>
           {toast}
-        </div>
-      )}
-    </div>
+        </Alert>
+      </Snackbar>
+    </Box>
   );
 }

@@ -1,15 +1,21 @@
 import { useState, useEffect } from "react";
-import { getMeals, placeOrder } from "../api";
-import type { CartItem, Meal } from "../types";
-import MealCard from "../components/MealCard";
+import { getMenus, placeOrder, checkOrderForDate, deleteOrder } from "../api";
+import type { Menu } from "../types";
 import { useAuth } from "../context/AuthContext";
-
-const CATEGORY_LABELS: Record<string, string> = {
-  starter: "🥗 Vorspeisen",
-  main: "🍽 Hauptgänge",
-  dessert: "🍰 Nachtische",
-};
-const CATEGORY_ORDER = ["starter", "main", "dessert"];
+import {
+  Box,
+  Typography,
+  Button,
+  Grid,
+  Card,
+  CardContent,
+  CircularProgress,
+  Alert,
+  Chip,
+  IconButton,
+} from "@mui/material";
+import { CheckCircle, Login, Delete } from "@mui/icons-material";
+import { Link } from "react-router-dom";
 
 function toDateStr(d: Date) {
   return d.toISOString().split("T")[0];
@@ -25,163 +31,234 @@ export default function MenuPage() {
   const dates = [0, 1, 2].map((o) => { const d = new Date(today); d.setDate(today.getDate() + o); return toDateStr(d); });
 
   const [selectedDate, setSelectedDate] = useState(dates[0]);
-  const [meals, setMeals] = useState<Meal[]>([]);
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [customerName, setCustomerName] = useState("");
+  const [menus, setMenus] = useState<Menu[]>([]);
   const [loading, setLoading] = useState(false);
+  const [hasOrder, setHasOrder] = useState(false);
+  const [orderedMenuId, setOrderedMenuId] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) setCustomerName(`${user.firstname} ${user.lastname}`);
-  }, [user]);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
     setLoading(true);
-    getMeals(selectedDate)
-      .then(setMeals)
+    getMenus(selectedDate)
+      .then(setMenus)
       .finally(() => setLoading(false));
   }, [selectedDate]);
 
-  const addToCart = (meal: Meal) => {
-    setCart((prev) => {
-      const existing = prev.find((i) => i.meal.id === meal.id);
-      if (existing) return prev.map((i) => i.meal.id === meal.id ? { ...i, quantity: i.quantity + 1 } : i);
-      return [...prev, { meal, quantity: 1 }];
-    });
-  };
-
-  const removeFromCart = (meal: Meal) => {
-    setCart((prev) => {
-      const existing = prev.find((i) => i.meal.id === meal.id);
-      if (!existing) return prev;
-      if (existing.quantity === 1) return prev.filter((i) => i.meal.id !== meal.id);
-      return prev.map((i) => i.meal.id === meal.id ? { ...i, quantity: i.quantity - 1 } : i);
-    });
-  };
-
-  const cartTotal = cart.reduce((sum, i) => sum + i.meal.price * i.quantity, 0);
-
-  const handleOrder = async () => {
-    if (!customerName.trim()) { setError("Bitte gib deinen Namen ein."); return; }
-    if (!cart.length) { setError("Bitte wähle mindestens eine Speise."); return; }
+  useEffect(() => {
+    if (user) {
+      checkOrderForDate(user.id, selectedDate).then((res) => {
+        setHasOrder(res.hasOrder);
+        setOrderedMenuId(res.menuId);
+      });
+    } else {
+      setHasOrder(false);
+      setOrderedMenuId(null);
+    }
     setError(null);
+    setSuccess(null);
+  }, [user, selectedDate]);
+
+  const handleOrder = async (menu: Menu) => {
+    if (!user) {
+      setError("Bitte melde dich an, um zu bestellen.");
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+
     try {
       const result = await placeOrder({
-        customer_name: customerName,
-        user_id: user?.id,
-        items: cart.map((i) => ({ meal_id: i.meal.id, quantity: i.quantity })),
+        customer_name: `${user.firstname} ${user.lastname}`,
+        user_id: user.id,
+        order_date: selectedDate,
+        menu_id: menu.id,
+        quantity: 1,
       });
-      setSuccess(`Bestellung #${result.id} wurde aufgegeben! Gesamt: ${result.total.toFixed(2)} €`);
-      setCart([]);
-      if (user) setCustomerName(`${user.firstname} ${user.lastname}`);
-      else setCustomerName("");
-    } catch {
+
+      if ("error" in result) {
+        setError(result.error);
+      } else {
+        setSuccess(`Bestellung erfolgreich! ${menu.name} für ${formatDate(selectedDate)}`);
+        setHasOrder(true);
+        setOrderedMenuId(menu.id);
+      }
+    } catch (err) {
       setError("Fehler beim Bestellen. Bitte versuche es erneut.");
     }
   };
 
-  const byCategory = CATEGORY_ORDER.reduce<Record<string, Meal[]>>((acc, cat) => {
-    acc[cat] = meals.filter((m) => m.category === cat);
-    return acc;
-  }, {});
+  const handleCancelOrder = async (event: React.MouseEvent) => {
+    event.stopPropagation();
+    
+    if (!user) return;
+
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const result = await deleteOrder(user.id, selectedDate);
+
+      if ("error" in result) {
+        setError(result.error);
+      } else {
+        setSuccess("Bestellung erfolgreich storniert.");
+        setHasOrder(false);
+        setOrderedMenuId(null);
+      }
+    } catch (err) {
+      setError("Fehler beim Stornieren. Bitte versuche es erneut.");
+    }
+  };
 
   return (
-    <div className="flex gap-6">
-      {/* Menu */}
-      <div className="flex-1 min-w-0">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Speisekarte</h1>
+    <Box>
+      <Typography variant="h1" sx={{ mb: 2 }}>
+        Speisekarte
+      </Typography>
 
-        {/* Date selector */}
-        <div className="flex gap-2 mb-6 flex-wrap">
-          {dates.map((d) => (
-            <button
-              key={d}
-              onClick={() => setSelectedDate(d)}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition ${
-                d === selectedDate
-                  ? "bg-orange-500 text-white shadow"
-                  : "bg-white border border-gray-200 text-gray-700 hover:bg-orange-50"
-              }`}
-            >
-              {formatDate(d)}
-            </button>
-          ))}
-        </div>
-
-        {loading && <p className="text-gray-400">Lade Speisen…</p>}
-
-        {!loading && meals.length === 0 && (
-          <p className="text-gray-500">Keine Speisen für diesen Tag verfügbar.</p>
-        )}
-
-        {!loading && CATEGORY_ORDER.map((cat) => {
-          const catMeals = byCategory[cat];
-          if (!catMeals?.length) return null;
-          return (
-            <section key={cat} className="mb-8">
-              <h2 className="text-xl font-semibold text-gray-700 mb-3">{CATEGORY_LABELS[cat]}</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {catMeals.map((meal) => (
-                  <MealCard
-                    key={meal.id}
-                    meal={meal}
-                    cartItem={cart.find((i) => i.meal.id === meal.id)}
-                    onAdd={addToCart}
-                    onRemove={removeFromCart}
-                  />
-                ))}
-              </div>
-            </section>
-          );
-        })}
-      </div>
-
-      {/* Cart sidebar */}
-      <div className="w-72 shrink-0">
-        <div className="sticky top-6 bg-white rounded-xl shadow border border-gray-100 p-5">
-          <h2 className="text-lg font-bold text-gray-800 mb-4">🛒 Warenkorb</h2>
-
-          {cart.length === 0 ? (
-            <p className="text-sm text-gray-400">Noch nichts ausgewählt.</p>
-          ) : (
-            <ul className="divide-y divide-gray-100 mb-4">
-              {cart.map((item) => (
-                <li key={item.meal.id} className="py-2 flex justify-between text-sm">
-                  <span className="text-gray-700">{item.meal.name} ×{item.quantity}</span>
-                  <span className="font-medium text-gray-800">
-                    {(item.meal.price * item.quantity).toFixed(2)} €
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <div className="flex justify-between font-bold text-gray-800 mb-4">
-            <span>Gesamt</span>
-            <span>{cartTotal.toFixed(2)} €</span>
-          </div>
-
-          <input
-            type="text"
-            placeholder="Dein Name"
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-orange-400"
-          />
-
-          {error && <p className="text-red-500 text-xs mb-2">{error}</p>}
-          {success && <p className="text-green-600 text-xs mb-2">{success}</p>}
-
-          <button
-            onClick={handleOrder}
-            disabled={!cart.length}
-            className="w-full bg-orange-500 text-white py-2 rounded-lg font-semibold hover:bg-orange-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
+      <Box sx={{ display: "flex", gap: 1, mb: 4, flexWrap: "wrap" }}>
+        {dates.map((d) => (
+          <Button
+            key={d}
+            variant={d === selectedDate ? "contained" : "outlined"}
+            onClick={() => setSelectedDate(d)}
+            size="small"
           >
-            Jetzt bestellen
-          </button>
-        </div>
-      </div>
-    </div>
+            {formatDate(d)}
+          </Button>
+        ))}
+      </Box>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+
+      {success && (
+        <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess(null)}>
+          {success}
+        </Alert>
+      )}
+
+      {loading && (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+          <CircularProgress />
+        </Box>
+      )}
+
+      {!loading && menus.length === 0 && (
+        <Typography color="text.secondary">
+          Keine Menüs für diesen Tag verfügbar.
+        </Typography>
+      )}
+
+      {!loading && (
+        <Grid container spacing={3}>
+          {menus.map((menu) => {
+            const isOrdered = orderedMenuId === menu.id;
+            
+            return (
+              <Grid item xs={12} sm={6} md={4} key={menu.id}>
+                <Card
+                  elevation={2}
+                  sx={{
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    transition: "all 0.2s",
+                    border: isOrdered ? 2 : 0,
+                    borderColor: isOrdered ? "success.main" : "transparent",
+                    "&:hover": {
+                      boxShadow: 4,
+                    },
+                  }}
+                >
+                  <CardContent sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
+                      <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                        {menu.name}
+                      </Typography>
+                      {isOrdered && (
+                        <Chip
+                          icon={<CheckCircle />}
+                          label="Bestellt"
+                          color="success"
+                          size="small"
+                          onDelete={handleCancelOrder}
+                          deleteIcon={
+                            <IconButton
+                              size="small"
+                              sx={{ 
+                                padding: 0,
+                                "&:hover": { color: "error.main" }
+                              }}
+                            >
+                              <Delete fontSize="small" />
+                            </IconButton>
+                          }
+                        />
+                      )}
+                    </Box>
+                    
+                    {menu.description && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2, whiteSpace: "pre-line" }}>
+                        {menu.description}
+                      </Typography>
+                    )}
+
+                    <Box sx={{ mt: "auto", pt: 2, borderTop: 1, borderColor: "divider" }}>
+                      <Typography variant="h6" color="primary" sx={{ fontWeight: 700, mb: 2 }}>
+                        {menu.price.toFixed(2)} €
+                      </Typography>
+                      
+                      {!user ? (
+                        <Button
+                          fullWidth
+                          variant="outlined"
+                          component={Link}
+                          to="/login"
+                          startIcon={<Login />}
+                        >
+                          Anmelden zum Bestellen
+                        </Button>
+                      ) : isOrdered ? (
+                        <Button
+                          fullWidth
+                          variant="contained"
+                          color="success"
+                          startIcon={<CheckCircle />}
+                          disabled
+                        >
+                          Bereits bestellt
+                        </Button>
+                      ) : hasOrder ? (
+                        <Button
+                          fullWidth
+                          variant="outlined"
+                          disabled
+                        >
+                          Bereits für heute bestellt
+                        </Button>
+                      ) : (
+                        <Button
+                          fullWidth
+                          variant="contained"
+                          onClick={() => handleOrder(menu)}
+                        >
+                          Jetzt bestellen
+                        </Button>
+                      )}
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            );
+          })}
+        </Grid>
+      )}
+    </Box>
   );
 }

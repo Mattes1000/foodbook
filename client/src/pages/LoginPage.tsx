@@ -2,6 +2,18 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { loginByPassword } from "../api";
 import { useAuth } from "../context/AuthContext";
+import {
+  Box,
+  Card,
+  CardContent,
+  TextField,
+  Button,
+  Typography,
+  Alert,
+  Divider,
+  Container,
+} from "@mui/material";
+import { Restaurant } from "@mui/icons-material";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -33,71 +45,82 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm p-8">
-        <div className="text-center mb-8">
-          <div className="text-5xl mb-3">🍽</div>
-          <h1 className="text-2xl font-bold text-gray-800">Foodbook</h1>
-          <p className="text-gray-500 text-sm mt-1">Bitte anmelden</p>
-        </div>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        bgcolor: "background.default",
+        py: 4,
+      }}
+    >
+      <Container maxWidth="xs">
+        <Card elevation={3}>
+          <CardContent sx={{ p: 4 }}>
+            <Box sx={{ textAlign: "center", mb: 4 }}>
+              <Restaurant sx={{ fontSize: 64, color: "primary.main", mb: 2 }} />
+              <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+                Foodbook
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Bitte anmelden
+              </Typography>
+            </Box>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Benutzername
-            </label>
-            <input
-              type="text"
-              autoFocus
-              autoComplete="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
-              placeholder="z.B. admin"
-            />
-          </div>
+            <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+              <TextField
+                fullWidth
+                label="Benutzername"
+                autoFocus
+                autoComplete="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="z.B. admin"
+              />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Passwort
-            </label>
-            <input
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
-              placeholder="••••••••"
-            />
-          </div>
+              <TextField
+                fullWidth
+                label="Passwort"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+              />
 
-          {error && (
-            <p className="text-red-500 text-sm bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-              {error}
-            </p>
-          )}
+              {error && <Alert severity="error">{error}</Alert>}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-orange-500 text-white py-2.5 rounded-lg font-semibold hover:bg-orange-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? "Anmelden…" : "Anmelden"}
-          </button>
-        </form>
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                size="large"
+                disabled={loading}
+                sx={{ py: 1.5 }}
+              >
+                {loading ? "Anmelden…" : "Anmelden"}
+              </Button>
+            </Box>
 
-        <div className="mt-6 pt-5 border-t border-gray-100 text-center">
-          <p className="text-xs text-gray-400">
-            Alternativ per QR-Code anmelden
-          </p>
-          <Link
-            to="/"
-            className="text-xs text-orange-500 hover:underline mt-1 inline-block"
-          >
-            Zurück zur Speisekarte
-          </Link>
-        </div>
-      </div>
-    </div>
+            <Divider sx={{ my: 3 }} />
+
+            <Box sx={{ textAlign: "center" }}>
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                Alternativ per QR-Code anmelden
+              </Typography>
+              <Button
+                component={Link}
+                to="/"
+                size="small"
+                sx={{ textTransform: "none" }}
+              >
+                Zurück zur Speisekarte
+              </Button>
+            </Box>
+          </CardContent>
+        </Card>
+      </Container>
+    </Box>
   );
 }

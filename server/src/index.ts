@@ -1,4 +1,5 @@
 import { handleMeals } from "./routes/meals";
+import { handleMenus } from "./routes/menus";
 import { handleOrders } from "./routes/orders";
 import { handleUsers } from "./routes/users";
 import { join } from "path";
@@ -41,6 +42,8 @@ const server = Bun.serve({
 
     if (url.pathname === "/api/health") {
       res = Response.json({ ok: true });
+    } else if (url.pathname.startsWith("/api/menus")) {
+      res = await handleMenus(req, url);
     } else if (url.pathname.startsWith("/api/meals")) {
       res = await handleMeals(req, url);
     } else if (url.pathname.startsWith("/api/orders")) {

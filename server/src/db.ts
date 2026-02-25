@@ -3,7 +3,7 @@ import { Database } from "bun:sqlite";
 const DB_PATH = process.env.DATABASE_PATH ?? "foodbook.db";
 export const db = new Database(DB_PATH, { create: true });
 
-db.exec(`PRAGMA journal_mode = WAL;`);
+// db.exec(`PRAGMA journal_mode = WAL;`);
 db.exec(`PRAGMA foreign_keys = OFF;`);
 
 // Migration: add user_id to orders if missing
@@ -31,7 +31,6 @@ db.exec(`
     name TEXT NOT NULL,
     description TEXT,
     price REAL NOT NULL,
-    category TEXT NOT NULL CHECK(category IN ('starter', 'main', 'dessert')),
     image_url TEXT,
     active INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -42,6 +41,22 @@ db.exec(`
     meal_id INTEGER NOT NULL REFERENCES meals(id) ON DELETE CASCADE,
     available_date TEXT NOT NULL,
     UNIQUE(meal_id, available_date)
+  );
+
+  CREATE TABLE IF NOT EXISTS menus (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    price REAL NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS menu_days (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    menu_id INTEGER NOT NULL REFERENCES menus(id) ON DELETE CASCADE,
+    available_date TEXT NOT NULL,
+    UNIQUE(menu_id, available_date)
   );
 
   CREATE TABLE IF NOT EXISTS users (
@@ -67,7 +82,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS order_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-    meal_id INTEGER NOT NULL REFERENCES meals(id),
+    menu_id INTEGER NOT NULL REFERENCES menus(id),
     quantity INTEGER NOT NULL DEFAULT 1,
     price_at_order REAL NOT NULL
   );

@@ -12,7 +12,7 @@ export async function handleMeals(req: Request, url: URL): Promise<Response | nu
       JOIN meal_days md ON md.meal_id = m.id
       WHERE m.active = 1 AND md.available_date = $date
       GROUP BY m.id
-      ORDER BY m.category, m.name
+      ORDER BY m.name
     `).all({ $date: date });
     return Response.json(rows);
   }
@@ -24,7 +24,7 @@ export async function handleMeals(req: Request, url: URL): Promise<Response | nu
       FROM meals m
       LEFT JOIN meal_days md ON md.meal_id = m.id
       GROUP BY m.id
-      ORDER BY m.category, m.name
+      ORDER BY m.name
     `).all();
     return Response.json(rows);
   }
@@ -67,10 +67,10 @@ export async function handleMeals(req: Request, url: URL): Promise<Response | nu
 }
 
 async function handleCreate(req: Request): Promise<Response> {
-  const body = await req.json() as { name: string; description: string; price: number; category: string; dates?: string[] };
-  const { name, description, price, category, dates = [] } = body;
-  db.query("INSERT INTO meals (name, description, price, category) VALUES ($name, $description, $price, $category)")
-    .run({ $name: name, $description: description, $price: price, $category: category });
+  const body = await req.json() as { name: string; description: string; price: number; dates?: string[] };
+  const { name, description, price, dates = [] } = body;
+  db.query("INSERT INTO meals (name, description, price) VALUES ($name, $description, $price)")
+    .run({ $name: name, $description: description, $price: price });
   const row = db.query("SELECT last_insert_rowid() as id").get() as { id: number };
   const insertDay = db.prepare("INSERT OR IGNORE INTO meal_days (meal_id, available_date) VALUES ($meal_id, $date)");
   for (const date of dates) insertDay.run({ $meal_id: row.id, $date: date });
@@ -78,10 +78,10 @@ async function handleCreate(req: Request): Promise<Response> {
 }
 
 async function handleUpdate(req: Request, id: number): Promise<Response> {
-  const body = await req.json() as { name: string; description: string; price: number; category: string; active?: number; dates?: string[] };
-  const { name, description, price, category, active = 1, dates = [] } = body;
-  db.query("UPDATE meals SET name=$name, description=$description, price=$price, category=$category, active=$active WHERE id=$id")
-    .run({ $name: name, $description: description, $price: price, $category: category, $active: active, $id: id });
+  const body = await req.json() as { name: string; description: string; price: number; active?: number; dates?: string[] };
+  const { name, description, price, active = 1, dates = [] } = body;
+  db.query("UPDATE meals SET name=$name, description=$description, price=$price, active=$active WHERE id=$id")
+    .run({ $name: name, $description: description, $price: price, $active: active, $id: id });
   db.query("DELETE FROM meal_days WHERE meal_id = $id").run({ $id: id });
   const insertDay = db.prepare("INSERT OR IGNORE INTO meal_days (meal_id, available_date) VALUES ($meal_id, $date)");
   for (const date of dates) insertDay.run({ $meal_id: id, $date: date });
@@ -89,10 +89,10 @@ async function handleUpdate(req: Request, id: number): Promise<Response> {
 }
 
 function handleCopy(id: number): Response {
-  const meal = db.query("SELECT * FROM meals WHERE id = $id").get({ $id: id }) as { name: string; description: string; price: number; category: string } | null;
+  const meal = db.query("SELECT * FROM meals WHERE id = $id").get({ $id: id }) as { name: string; description: string; price: number } | null;
   if (!meal) return new Response("Not Found", { status: 404 });
-  db.query("INSERT INTO meals (name, description, price, category) VALUES ($name, $description, $price, $category)")
-    .run({ $name: `${meal.name} (Kopie)`, $description: meal.description, $price: meal.price, $category: meal.category });
+  db.query("INSERT INTO meals (name, description, price) VALUES ($name, $description, $price)")
+    .run({ $name: `${meal.name} (Kopie)`, $description: meal.description, $price: meal.price });
   const row = db.query("SELECT last_insert_rowid() as id").get() as { id: number };
   return Response.json({ id: row.id }, { status: 201 });
 }

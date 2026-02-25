@@ -3,14 +3,23 @@ export interface Meal {
   name: string;
   description: string;
   price: number;
-  category: "starter" | "main" | "dessert";
   image_url: string | null;
   active: number;
   dates: string;
 }
 
+export interface Menu {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  active: number;
+  dates: string;
+  created_at?: string;
+}
+
 export interface CartItem {
-  meal: Meal;
+  menu: Menu;
   quantity: number;
 }
 

@@ -1,5 +1,21 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  Box,
+  Container,
+  Chip,
+  useMediaQuery,
+  useTheme,
+  IconButton,
+  Menu,
+  MenuItem,
+} from "@mui/material";
+import { Restaurant, Menu as MenuIcon } from "@mui/icons-material";
+import { useState } from "react";
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "Admin",
@@ -7,74 +23,190 @@ const ROLE_LABELS: Record<string, string> = {
   user: "Benutzer",
 };
 
-const ROLE_COLORS: Record<string, string> = {
-  admin: "bg-red-200 text-red-800",
-  manager: "bg-blue-200 text-blue-800",
-  user: "bg-gray-200 text-gray-700",
+const ROLE_COLORS: Record<string, "error" | "info" | "default"> = {
+  admin: "error",
+  manager: "info",
+  user: "default",
 };
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
   const { user, logout } = useAuth();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const canAccessAdmin = user?.role === "admin" || user?.role === "manager";
 
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-orange-600 text-white shadow">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link to="/" className="text-2xl font-bold tracking-tight">
-            🍽 Foodbook
-          </Link>
-          <div className="flex items-center gap-4">
-            <nav className="flex gap-2">
-              <Link
-                to="/"
-                className={`px-3 py-1 rounded font-medium transition ${
-                  pathname === "/" ? "bg-white text-orange-600" : "hover:bg-orange-500"
-                }`}
-              >
-                Speisekarte
-              </Link>
-              {canAccessAdmin && (
-                <Link
-                  to="/admin"
-                  className={`px-3 py-1 rounded font-medium transition ${
-                    pathname === "/admin" ? "bg-white text-orange-600" : "hover:bg-orange-500"
-                  }`}
-                >
-                  Administration
-                </Link>
-              )}
-            </nav>
-            {user ? (
-              <div className="flex items-center gap-2">
-                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${ROLE_COLORS[user.role]}`}>
-                  {ROLE_LABELS[user.role]}
-                </span>
-                <span className="text-sm font-medium">{user.firstname} {user.lastname}</span>
-                <button
-                  onClick={logout}
-                  className="text-xs px-2 py-1 bg-orange-700 hover:bg-orange-800 rounded transition"
-                >
-                  Abmelden
-                </button>
-              </div>
+    <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+      <AppBar position="static" elevation={2}>
+        <Container maxWidth="lg">
+          <Toolbar disableGutters sx={{ gap: 2 }}>
+            <Restaurant sx={{ mr: 1 }} />
+            <Typography
+              variant="h6"
+              component={Link}
+              to="/"
+              sx={{
+                flexGrow: isMobile ? 1 : 0,
+                textDecoration: "none",
+                color: "inherit",
+                fontWeight: 700,
+                mr: 4,
+              }}
+            >
+              Foodbook
+            </Typography>
+
+            {!isMobile ? (
+              <>
+                <Box sx={{ flexGrow: 1, display: "flex", gap: 1 }}>
+                  <Button
+                    component={Link}
+                    to="/"
+                    color="inherit"
+                    variant={pathname === "/" ? "outlined" : "text"}
+                    sx={{
+                      bgcolor: pathname === "/" ? "white" : "transparent",
+                      color: pathname === "/" ? "primary.main" : "inherit",
+                      "&:hover": {
+                        bgcolor: pathname === "/" ? "white" : "primary.dark",
+                      },
+                    }}
+                  >
+                    Speisekarte
+                  </Button>
+                  {canAccessAdmin && (
+                    <Button
+                      component={Link}
+                      to="/admin"
+                      color="inherit"
+                      variant={pathname === "/admin" ? "outlined" : "text"}
+                      sx={{
+                        bgcolor: pathname === "/admin" ? "white" : "transparent",
+                        color: pathname === "/admin" ? "primary.main" : "inherit",
+                        "&:hover": {
+                          bgcolor: pathname === "/admin" ? "white" : "primary.dark",
+                        },
+                      }}
+                    >
+                      Administration
+                    </Button>
+                  )}
+                </Box>
+
+                {user ? (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                    <Chip
+                      label={ROLE_LABELS[user.role]}
+                      color={ROLE_COLORS[user.role]}
+                      size="small"
+                    />
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {user.firstname} {user.lastname}
+                    </Typography>
+                    <Button
+                      onClick={logout}
+                      variant="contained"
+                      size="small"
+                      sx={{ bgcolor: "primary.dark" }}
+                    >
+                      Abmelden
+                    </Button>
+                  </Box>
+                ) : (
+                  <Button
+                    component={Link}
+                    to="/login"
+                    variant="contained"
+                    size="small"
+                    sx={{ bgcolor: "white", color: "primary.main" }}
+                  >
+                    Anmelden
+                  </Button>
+                )}
+              </>
             ) : (
-              <Link
-                to="/login"
-                className="text-sm px-3 py-1 bg-white text-orange-600 font-semibold rounded hover:bg-orange-50 transition"
-              >
-                Anmelden
-              </Link>
+              <>
+                <IconButton
+                  color="inherit"
+                  onClick={handleMenuOpen}
+                  edge="end"
+                >
+                  <MenuIcon />
+                </IconButton>
+                <Menu
+                  anchorEl={anchorEl}
+                  open={Boolean(anchorEl)}
+                  onClose={handleMenuClose}
+                >
+                  <MenuItem
+                    component={Link}
+                    to="/"
+                    onClick={handleMenuClose}
+                    selected={pathname === "/"}
+                  >
+                    Speisekarte
+                  </MenuItem>
+                  {canAccessAdmin && (
+                    <MenuItem
+                      component={Link}
+                      to="/admin"
+                      onClick={handleMenuClose}
+                      selected={pathname === "/admin"}
+                    >
+                      Administration
+                    </MenuItem>
+                  )}
+                  {user ? (
+                    <>
+                      <MenuItem disabled>
+                        {user.firstname} {user.lastname} ({ROLE_LABELS[user.role]})
+                      </MenuItem>
+                      <MenuItem onClick={() => { logout(); handleMenuClose(); }}>
+                        Abmelden
+                      </MenuItem>
+                    </>
+                  ) : (
+                    <MenuItem component={Link} to="/login" onClick={handleMenuClose}>
+                      Anmelden
+                    </MenuItem>
+                  )}
+                </Menu>
+              </>
             )}
-          </div>
-        </div>
-      </header>
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-8">{children}</main>
-      <footer className="text-center text-gray-400 text-sm py-4">
+          </Toolbar>
+        </Container>
+      </AppBar>
+
+      <Container
+        component="main"
+        maxWidth="lg"
+        sx={{ flexGrow: 1, py: { xs: 3, md: 4 } }}
+      >
+        {children}
+      </Container>
+
+      <Box
+        component="footer"
+        sx={{
+          py: 2,
+          textAlign: "center",
+          color: "text.secondary",
+          fontSize: "0.875rem",
+        }}
+      >
         © {new Date().getFullYear()} Foodbook
-      </footer>
-    </div>
+      </Box>
+    </Box>
   );
 }

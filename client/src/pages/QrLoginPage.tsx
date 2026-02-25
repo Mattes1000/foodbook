@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { loginByQr } from "../api";
 import { useAuth } from "../context/AuthContext";
+import { Box, Card, CardContent, Typography, CircularProgress, Container } from "@mui/material";
+import { Error as ErrorIcon } from "@mui/icons-material";
 
 export default function QrLoginPage() {
   const { token } = useParams<{ token: string }>();
@@ -23,22 +25,52 @@ export default function QrLoginPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="bg-white rounded-xl shadow p-8 text-center">
-          <div className="text-5xl mb-4">❌</div>
-          <h1 className="text-xl font-bold text-gray-800 mb-2">Ungültiger QR-Code</h1>
-          <p className="text-gray-500 text-sm">Dieser QR-Code wurde nicht gefunden.</p>
-        </div>
-      </div>
+      <Box
+        sx={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          bgcolor: "background.default",
+        }}
+      >
+        <Container maxWidth="xs">
+          <Card elevation={3}>
+            <CardContent sx={{ p: 4, textAlign: "center" }}>
+              <ErrorIcon sx={{ fontSize: 64, color: "error.main", mb: 2 }} />
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
+                Ungültiger QR-Code
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Dieser QR-Code wurde nicht gefunden.
+              </Typography>
+            </CardContent>
+          </Card>
+        </Container>
+      </Box>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white rounded-xl shadow p-8 text-center">
-        <div className="text-5xl mb-4 animate-spin">⏳</div>
-        <p className="text-gray-600">Anmeldung läuft…</p>
-      </div>
-    </div>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        bgcolor: "background.default",
+      }}
+    >
+      <Container maxWidth="xs">
+        <Card elevation={3}>
+          <CardContent sx={{ p: 4, textAlign: "center" }}>
+            <CircularProgress size={64} sx={{ mb: 2 }} />
+            <Typography variant="body1" color="text.secondary">
+              Anmeldung läuft…
+            </Typography>
+          </CardContent>
+        </Card>
+      </Container>
+    </Box>
   );
 }
