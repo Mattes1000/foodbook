@@ -77,6 +77,43 @@ export async function handleUsers(req: Request, url: URL): Promise<Response | nu
     return Response.json({ qr_token: newToken });
   }
 
+  // POST /api/users/:id/change-password — Passwort ändern
+  const matchChangePassword = path.match(/^\/api\/users\/(\d+)\/change-password$/);
+  if (req.method === "POST" && matchChangePassword) {
+    const id = parseInt(matchChangePassword[1]);
+    const body = await req.json() as { currentPassword: string; newPassword: string };
+    const { currentPassword, newPassword } = body;
+
+    if (!currentPassword || !newPassword) {
+      return Response.json({ error: "Aktuelles und neues Passwort erforderlich." }, { status: 400 });
+    }
+
+    if (newPassword.length < 6) {
+      return Response.json({ error: "Neues Passwort muss mindestens 6 Zeichen lang sein." }, { status: 400 });
+    }
+
+    const user = db.query("SELECT password_hash FROM users WHERE id = $id").get({ $id: id }) as { password_hash: string | null } | null;
+
+    if (!user) {
+      return Response.json({ error: "Benutzer nicht gefunden." }, { status: 404 });
+    }
+
+    if (!user.password_hash) {
+      return Response.json({ error: "Kein Passwort gesetzt." }, { status: 400 });
+    }
+
+    const valid = await Bun.password.verify(currentPassword, user.password_hash);
+    if (!valid) {
+      return Response.json({ error: "Aktuelles Passwort ist falsch." }, { status: 401 });
+    }
+
+    const newHash = await Bun.password.hash(newPassword);
+    db.query("UPDATE users SET password_hash = $password_hash WHERE id = $id")
+      .run({ $password_hash: newHash, $id: id });
+
+    return Response.json({ success: true });
+  }
+
   // DELETE /api/users/:id
   const matchDel = path.match(/^\/api\/users\/(\d+)$/);
   if (req.method === "DELETE" && matchDel) {

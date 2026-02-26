@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import { Restaurant, Menu as MenuIcon } from "@mui/icons-material";
 import { useState } from "react";
+import ChangePasswordDialog from "./ChangePasswordDialog";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
@@ -22,6 +23,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
 
   const canAccessAdmin = user?.role === "admin" || user?.role === "manager";
 
@@ -96,6 +98,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     <Typography variant="body2" sx={{ fontWeight: 500 }}>
                       {user.firstname} {user.lastname}
                     </Typography>
+                    {canAccessAdmin && (
+                      <Button
+                        onClick={() => setPasswordDialogOpen(true)}
+                        variant="outlined"
+                        size="small"
+                        sx={{ color: "white", borderColor: "white" }}
+                      >
+                        Passwort ändern
+                      </Button>
+                    )}
                     <Button
                       onClick={logout}
                       variant="contained"
@@ -154,6 +166,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       <MenuItem disabled>
                         {user.firstname} {user.lastname}
                       </MenuItem>
+                      {canAccessAdmin && (
+                        <MenuItem onClick={() => { setPasswordDialogOpen(true); handleMenuClose(); }}>
+                          Passwort ändern
+                        </MenuItem>
+                      )}
                       <MenuItem onClick={() => { logout(); handleMenuClose(); }}>
                         Abmelden
                       </MenuItem>
@@ -189,6 +206,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       >
         © {new Date().getFullYear()} Book a food
       </Box>
+
+      {user && (
+        <ChangePasswordDialog
+          open={passwordDialogOpen}
+          onClose={() => setPasswordDialogOpen(false)}
+          userId={user.id}
+        />
+      )}
     </Box>
   );
 }

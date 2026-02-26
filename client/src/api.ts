@@ -169,3 +169,12 @@ export async function regenerateQrToken(id: number): Promise<{ qr_token: string 
   });
   return res.json();
 }
+
+export async function changePassword(userId: number, currentPassword: string, newPassword: string): Promise<{ success: boolean } | { error: string }> {
+  const res = await fetch(`${BASE}/users/${userId}/change-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+  return res.json();
+}
