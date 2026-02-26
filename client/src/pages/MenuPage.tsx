@@ -22,10 +22,6 @@ import dayjs, { Dayjs } from "dayjs";
 import "dayjs/locale/de";
 import { Link } from "react-router-dom";
 
-function toDateStr(d: Date) {
-  return d.toISOString().split("T")[0];
-}
-
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "long" });
 }
@@ -233,8 +229,8 @@ export default function MenuPage() {
                     )}
 
                     <Box sx={{ mt: "auto", pt: 2, borderTop: 1, borderColor: "divider" }}>
-                      <Typography variant="h6" color="primary" sx={{ fontWeight: 700, mb: 2 }}>
-                        {menu.price.toFixed(2)} €
+                      <Typography variant="h6" color="primary" sx={{ fontWeight: 700, mb: 2, whiteSpace: "nowrap" }}>
+                        {menu.price.toFixed(2).replace('.', ',')}&nbsp;€
                       </Typography>
                       
                       {!user ? (

@@ -3,6 +3,44 @@ import { db } from "../db";
 export async function handleOrders(req: Request, url: URL): Promise<Response | null> {
   const path = url.pathname;
 
+  // GET /api/orders/locked-dates
+  if (req.method === "GET" && path === "/api/orders/locked-dates") {
+    const rows = db.query("SELECT locked_date FROM locked_dates").all() as { locked_date: string }[];
+    return Response.json(rows.map(r => r.locked_date));
+  }
+
+  // POST /api/orders/lock-date
+  if (req.method === "POST" && path === "/api/orders/lock-date") {
+    const body = await req.json() as { date: string };
+    
+    if (!body.date) {
+      return Response.json({ error: "Datum erforderlich." }, { status: 400 });
+    }
+
+    try {
+      db.query("INSERT INTO locked_dates (locked_date) VALUES ($date)")
+        .run({ $date: body.date });
+      return Response.json({ success: true });
+    } catch (err) {
+      return Response.json({ error: "Datum bereits fixiert." }, { status: 400 });
+    }
+  }
+
+  // DELETE /api/orders/unlock-date
+  if (req.method === "DELETE" && path === "/api/orders/unlock-date") {
+    const url_params = new URL(req.url).searchParams;
+    const date = url_params.get("date");
+    
+    if (!date) {
+      return Response.json({ error: "Datum erforderlich." }, { status: 400 });
+    }
+
+    db.query("DELETE FROM locked_dates WHERE locked_date = $date")
+      .run({ $date: date });
+    
+    return Response.json({ success: true });
+  }
+
   // GET /api/orders/check?user_id=X&date=YYYY-MM-DD
   if (req.method === "GET" && path === "/api/orders/check") {
     const userId = url.searchParams.get("user_id");
@@ -117,14 +155,21 @@ export async function handleOrders(req: Request, url: URL): Promise<Response | n
     const date = url.searchParams.get("date");
     
     if (!userId || !date) {
-      return new Response("Bad Request: user_id and date required", { status: 400 });
+      return Response.json({ error: "user_id und date erforderlich." }, { status: 400 });
+    }
+
+    // Prüfe ob Datum fixiert ist
+    const isLocked = db.query("SELECT id FROM locked_dates WHERE locked_date = $date")
+      .get({ $date: date });
+    
+    if (isLocked) {
+      return Response.json({ error: "Bestellungen für diesen Tag sind fixiert und können nicht mehr geändert werden." }, { status: 403 });
     }
 
     const order = db.query(`
-      SELECT id FROM orders 
-      WHERE user_id = $user_id AND order_date = $date
+      SELECT id FROM orders WHERE user_id = $user_id AND order_date = $date
     `).get({ $user_id: parseInt(userId), $date: date }) as { id: number } | null;
-    
+
     if (!order) {
       return Response.json({ error: "Keine Bestellung gefunden." }, { status: 404 });
     }

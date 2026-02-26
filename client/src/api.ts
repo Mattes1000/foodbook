@@ -100,6 +100,27 @@ export async function deleteOrderById(orderId: number): Promise<{ success: boole
   return res.json();
 }
 
+export async function lockOrderDate(date: string): Promise<{ success: boolean } | { error: string }> {
+  const res = await fetch(`${BASE}/orders/lock-date`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ date }),
+  });
+  return res.json();
+}
+
+export async function getLockedDates(): Promise<string[]> {
+  const res = await fetch(`${BASE}/orders/locked-dates`);
+  return res.json();
+}
+
+export async function unlockOrderDate(date: string): Promise<{ success: boolean } | { error: string }> {
+  const res = await fetch(`${BASE}/orders/unlock-date?date=${date}`, {
+    method: "DELETE",
+  });
+  return res.json();
+}
+
 export async function loginByQr(token: string): Promise<User | null> {
   const res = await fetch(`${BASE}/auth/qr/${token}`);
   if (!res.ok) return null;

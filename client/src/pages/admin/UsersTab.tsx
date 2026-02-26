@@ -26,8 +26,6 @@ import {
   CircularProgress,
   Snackbar,
   Alert,
-  Card,
-  CardContent,
   IconButton,
 } from "@mui/material";
 import { QrCode2, Edit, Delete, Print, Refresh, ArrowUpward, ArrowDownward } from "@mui/icons-material";
@@ -58,6 +56,7 @@ export default function UsersTab() {
   const [regenerating, setRegenerating] = useState(false);
   const [sortBy, setSortBy] = useState<"name" | "role">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -113,11 +112,22 @@ export default function UsersTab() {
   const openEdit = (u: User) => {
     setEditId(u.id);
     setForm({ firstname: u.firstname, lastname: u.lastname, role: u.role });
+    setDialogOpen(true);
+  };
+
+  const openNew = () => {
+    resetForm();
+    setDialogOpen(true);
   };
 
   const resetForm = () => {
     setEditId(null);
     setForm({ ...EMPTY_FORM });
+  };
+
+  const handleCancel = () => {
+    setDialogOpen(false);
+    resetForm();
   };
 
   const handleSave = async () => {
@@ -131,6 +141,7 @@ export default function UsersTab() {
         const result = await createUser(form);
         showToast(`Benutzer erstellt. QR-Token: ${result.qr_token}`);
       }
+      setDialogOpen(false);
       resetForm();
       load();
     } finally {
@@ -166,11 +177,15 @@ export default function UsersTab() {
   };
 
   return (
-    <Box sx={{ display: "flex", gap: 3 }}>
-      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-        <Typography variant="h2" sx={{ mb: 3 }}>
+    <Box>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+        <Typography variant="h2">
           Benutzerverwaltung
         </Typography>
+        <Button variant="contained" onClick={openNew} startIcon={<Edit />}>
+          Neuer Benutzer
+        </Button>
+      </Box>
 
         {loading ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
@@ -261,66 +276,61 @@ export default function UsersTab() {
             </Table>
           </TableContainer>
         )}
-      </Box>
 
-      <Box sx={{ width: 320, flexShrink: 0 }}>
-        <Card sx={{ position: "sticky", top: 24 }}>
-          <CardContent>
-            <Typography variant="h6" sx={{ mb: 3, fontWeight: 700 }}>
-              {editId !== null ? "Benutzer bearbeiten" : "Neuer Benutzer"}
-            </Typography>
+      <Dialog
+        open={dialogOpen}
+        onClose={handleCancel}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          {editId !== null ? "Benutzer bearbeiten" : "Neuer Benutzer"}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Vorname"
+              value={form.firstname}
+              onChange={(e) => setForm((f) => ({ ...f, firstname: e.target.value }))}
+              placeholder="z.B. Maria"
+            />
 
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Vorname"
-                value={form.firstname}
-                onChange={(e) => setForm((f) => ({ ...f, firstname: e.target.value }))}
-                placeholder="z.B. Maria"
-              />
+            <TextField
+              fullWidth
+              size="small"
+              label="Nachname"
+              value={form.lastname}
+              onChange={(e) => setForm((f) => ({ ...f, lastname: e.target.value }))}
+              placeholder="z.B. Müller"
+            />
 
-              <TextField
-                fullWidth
-                size="small"
-                label="Nachname"
-                value={form.lastname}
-                onChange={(e) => setForm((f) => ({ ...f, lastname: e.target.value }))}
-                placeholder="z.B. Müller"
-              />
-
-              <FormControl fullWidth size="small">
-                <InputLabel>Rolle</InputLabel>
-                <Select
-                  value={form.role}
-                  label="Rolle"
-                  onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
-                >
-                  <MenuItem value="user">Benutzer</MenuItem>
-                  <MenuItem value="manager">Manager</MenuItem>
-                  <MenuItem value="admin">Admin</MenuItem>
-                </Select>
-              </FormControl>
-
-              <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  onClick={handleSave}
-                  disabled={saving || !form.firstname.trim() || !form.lastname.trim()}
-                >
-                  {saving ? "Speichere…" : editId !== null ? "Speichern" : "Erstellen"}
-                </Button>
-                {editId !== null && (
-                  <Button variant="outlined" onClick={resetForm}>
-                    Abbrechen
-                  </Button>
-                )}
-              </Box>
-            </Box>
-          </CardContent>
-        </Card>
-      </Box>
+            <FormControl fullWidth size="small">
+              <InputLabel>Rolle</InputLabel>
+              <Select
+                value={form.role}
+                label="Rolle"
+                onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
+              >
+                <MenuItem value="user">Benutzer</MenuItem>
+                <MenuItem value="manager">Manager</MenuItem>
+                <MenuItem value="admin">Admin</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancel}>Abbrechen</Button>
+          <Button
+            variant="contained"
+            onClick={handleSave}
+            disabled={saving || !form.firstname.trim() || !form.lastname.trim()}
+          >
+            {saving ? "Speichere…" : editId !== null ? "Speichern" : "Erstellen"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={!!qrModal} onClose={() => setQrModal(null)} maxWidth="xs" fullWidth>
         <style>{`

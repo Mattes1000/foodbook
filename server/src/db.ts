@@ -69,4 +69,11 @@ db.exec(`
     quantity INTEGER NOT NULL DEFAULT 1,
     price_at_order REAL NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS locked_dates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    locked_date TEXT NOT NULL UNIQUE,
+    locked_at TEXT NOT NULL DEFAULT (datetime('now')),
+    locked_by INTEGER REFERENCES users(id)
+  );
 `);

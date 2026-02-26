@@ -13,7 +13,7 @@ const AuthContext = createContext<AuthContextValue>({
   logout: () => {},
 });
 
-const STORAGE_KEY = "foodbook_user";
+const STORAGE_KEY = "bookafood_user";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {

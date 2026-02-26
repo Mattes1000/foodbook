@@ -7,7 +7,6 @@ import {
   Button,
   Box,
   Container,
-  Chip,
   useMediaQuery,
   useTheme,
   IconButton,
@@ -16,18 +15,6 @@ import {
 } from "@mui/material";
 import { Restaurant, Menu as MenuIcon } from "@mui/icons-material";
 import { useState } from "react";
-
-const ROLE_LABELS: Record<string, string> = {
-  admin: "Admin",
-  manager: "Manager",
-  user: "Benutzer",
-};
-
-const ROLE_COLORS: Record<string, "error" | "info" | "default"> = {
-  admin: "error",
-  manager: "info",
-  user: "default",
-};
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
@@ -64,7 +51,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 mr: 4,
               }}
             >
-              Foodbook
+              Book a food
             </Typography>
 
             {!isMobile ? (
@@ -106,11 +93,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
                 {user ? (
                   <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                    <Chip
-                      label={ROLE_LABELS[user.role]}
-                      color={ROLE_COLORS[user.role]}
-                      size="small"
-                    />
                     <Typography variant="body2" sx={{ fontWeight: 500 }}>
                       {user.firstname} {user.lastname}
                     </Typography>
@@ -170,7 +152,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   {user ? (
                     <>
                       <MenuItem disabled>
-                        {user.firstname} {user.lastname} ({ROLE_LABELS[user.role]})
+                        {user.firstname} {user.lastname}
                       </MenuItem>
                       <MenuItem onClick={() => { logout(); handleMenuClose(); }}>
                         Abmelden
@@ -205,7 +187,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           fontSize: "0.875rem",
         }}
       >
-        © {new Date().getFullYear()} Foodbook
+        © {new Date().getFullYear()} Book a food
       </Box>
     </Box>
   );

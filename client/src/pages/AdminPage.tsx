@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import UsersTab from "./admin/UsersTab";
 import OrdersTab from "./admin/OrdersTab";
 import MenusTab from "./admin/MenusTab";
@@ -17,7 +18,21 @@ type Tab = "menus" | "users" | "orders";
 
 export default function AdminPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>("menus");
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  const activeTab = (searchParams.get("tab") as Tab) || "menus";
+  
+  const setActiveTab = (tab: Tab) => {
+    setSearchParams({ tab });
+  };
+  
+  // Validate tab on mount
+  useEffect(() => {
+    const tab = searchParams.get("tab") as Tab;
+    if (!tab || !["menus", "users", "orders"].includes(tab)) {
+      setSearchParams({ tab: "menus" }, { replace: true });
+    }
+  }, []);
 
   if (!user || (user.role !== "admin" && user.role !== "manager")) {
     return (

@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { getAllMenus, getMenu, createMenu, updateMenu, deleteMenu, copyMenu } from "../../api";
 import type { MenuPayload } from "../../api";
 import type { Menu } from "../../types";
-import type { FC } from "react";
 import {
   Box,
   Typography,
@@ -20,10 +19,6 @@ import {
   FormControl,
   InputLabel,
   Chip,
-  Checkbox,
-  FormControlLabel,
-  Card,
-  CardContent,
   CircularProgress,
   Snackbar,
   Alert,
@@ -37,7 +32,7 @@ import { ContentCopy, Delete, Edit as EditIcon, ArrowUpward, ArrowDownward, Add 
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import dayjs, { Dayjs } from "dayjs";
+import { Dayjs } from "dayjs";
 import "dayjs/locale/de";
 
 const EMPTY_FORM = {
@@ -48,18 +43,6 @@ const EMPTY_FORM = {
   dates: [] as string[],
 };
 
-function toDateStr(d: Date) {
-  return d.toISOString().split("T")[0];
-}
-
-function getNextDays(n: number): string[] {
-  const today = new Date();
-  return Array.from({ length: n }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    return toDateStr(d);
-  });
-}
 
 export default function MenusTab() {
   const [menus, setMenus] = useState<Menu[]>([]);
@@ -72,8 +55,6 @@ export default function MenusTab() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(null);
-
-  const suggestedDates = getNextDays(7);
 
   const load = () => {
     setLoading(true);
