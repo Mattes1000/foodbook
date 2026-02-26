@@ -94,6 +94,23 @@ export async function handleOrders(req: Request, url: URL): Promise<Response | n
     return Response.json({ id: order.id, total }, { status: 201 });
   }
 
+  // DELETE /api/orders/:id - Admin löscht Bestellung nach ID
+  const matchDelete = path.match(/^\/api\/orders\/(\d+)$/);
+  if (req.method === "DELETE" && matchDelete) {
+    const orderId = parseInt(matchDelete[1]);
+    
+    const order = db.query("SELECT id FROM orders WHERE id = $id").get({ $id: orderId }) as { id: number } | null;
+    
+    if (!order) {
+      return Response.json({ error: "Bestellung nicht gefunden." }, { status: 404 });
+    }
+
+    db.query("DELETE FROM order_items WHERE order_id = $order_id").run({ $order_id: orderId });
+    db.query("DELETE FROM orders WHERE id = $order_id").run({ $order_id: orderId });
+
+    return Response.json({ success: true });
+  }
+
   // DELETE /api/orders?user_id=X&date=YYYY-MM-DD
   if (req.method === "DELETE" && path === "/api/orders") {
     const userId = url.searchParams.get("user_id");

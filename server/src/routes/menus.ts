@@ -33,6 +33,18 @@ export async function handleMenus(req: Request, url: URL): Promise<Response | nu
     return Response.json(rows);
   }
 
+  // GET /api/menus/available-dates - gibt alle Daten zurück, an denen Menüs verfügbar sind
+  if (req.method === "GET" && path === "/api/menus/available-dates") {
+    const rows = db.query(`
+      SELECT DISTINCT md.available_date
+      FROM menu_days md
+      JOIN menus m ON m.id = md.menu_id
+      WHERE m.active = 1
+      ORDER BY md.available_date
+    `).all() as { available_date: string }[];
+    return Response.json(rows.map(r => r.available_date));
+  }
+
   // GET /api/menus/:id
   const matchGet = path.match(/^\/api\/menus\/(\d+)$/);
   if (req.method === "GET" && matchGet) {

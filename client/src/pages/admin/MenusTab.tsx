@@ -27,6 +27,10 @@ import {
   Snackbar,
   Alert,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import { ContentCopy, Delete, Edit as EditIcon, ArrowUpward, ArrowDownward } from "@mui/icons-material";
 
@@ -60,6 +64,7 @@ export default function MenusTab() {
   const [toast, setToast] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"name" | "price" | "status">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const suggestedDates = getNextDays(7);
 
@@ -105,6 +110,7 @@ export default function MenusTab() {
   const openNew = () => {
     setEditId(null);
     setForm({ ...EMPTY_FORM });
+    setDialogOpen(true);
   };
 
   const openEdit = async (id: number) => {
@@ -117,6 +123,7 @@ export default function MenusTab() {
       active: menu.active,
       dates: menu.dates || [],
     });
+    setDialogOpen(true);
   };
 
   const handleSave = async () => {
@@ -145,15 +152,22 @@ export default function MenusTab() {
 
       setForm({ ...EMPTY_FORM });
       setEditId(null);
+      setDialogOpen(false);
       load();
     } finally {
       setSaving(false);
     }
   };
 
+  const handleCancel = () => {
+    setForm({ ...EMPTY_FORM });
+    setEditId(null);
+    setDialogOpen(false);
+  };
+
   const handleCopy = async (id: number) => {
     await copyMenu(id);
-    showToast("Menü kopiert.");
+    showToast("Menü kopiert!");
     load();
   };
 
@@ -173,11 +187,8 @@ export default function MenusTab() {
     }));
   };
 
-  const isEditing = editId !== null || form.name !== "";
-
   return (
-    <Box sx={{ display: "flex", gap: 3, flexDirection: { xs: "column", md: "row" } }}>
-      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+    <Box>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
           <Typography variant="h2">Menüs</Typography>
           <Button variant="contained" onClick={openNew} startIcon={<EditIcon />}>
@@ -288,105 +299,97 @@ export default function MenusTab() {
             </Table>
           </TableContainer>
         )}
-      </Box>
 
-      <Box sx={{ width: { xs: "100%", md: 380 }, flexShrink: 0 }}>
-        <Card sx={{ position: { xs: "relative", md: "sticky" }, top: 24 }}>
-          <CardContent>
-            <Typography variant="h6" sx={{ mb: 3, fontWeight: 700 }}>
-              {editId !== null ? "Menü bearbeiten" : "Neues Menü"}
-            </Typography>
+      <Dialog
+        open={dialogOpen}
+        onClose={handleCancel}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          {editId !== null ? "Menü bearbeiten" : "Neues Menü"}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Name"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder="z.B. Tagesmenü"
+            />
 
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Name"
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="z.B. Tagesmenü"
-              />
+            <TextField
+              fullWidth
+              size="small"
+              label="Beschreibung"
+              multiline
+              rows={4}
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              placeholder="Beschreibe das Menü..."
+            />
 
-              <TextField
-                fullWidth
-                size="small"
-                label="Beschreibung"
-                multiline
-                rows={4}
-                value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                placeholder="Beschreibe das Menü..."
-              />
+            <TextField
+              size="small"
+              label="Preis (€)"
+              type="number"
+              inputProps={{ step: 0.1, min: 0 }}
+              value={form.price}
+              onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
+              placeholder="0.00"
+            />
 
-              <TextField
-                size="small"
-                label="Preis (€)"
-                type="number"
-                inputProps={{ step: 0.1, min: 0 }}
-                value={form.price}
-                onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
-                placeholder="0.00"
-              />
+            <FormControl size="small">
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={form.active}
+                label="Status"
+                onChange={(e) => setForm((f) => ({ ...f, active: parseInt(e.target.value as string) }))}
+              >
+                <MenuItem value={1}>Aktiv</MenuItem>
+                <MenuItem value={0}>Inaktiv</MenuItem>
+              </Select>
+            </FormControl>
 
-              <FormControl size="small">
-                <InputLabel>Status</InputLabel>
-                <Select
-                  value={form.active}
-                  label="Status"
-                  onChange={(e) => setForm((f) => ({ ...f, active: parseInt(e.target.value as string) }))}
-                >
-                  <MenuItem value={1}>Aktiv</MenuItem>
-                  <MenuItem value={0}>Inaktiv</MenuItem>
-                </Select>
-              </FormControl>
-
-              <Box>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  Verfügbar an
-                </Typography>
-                <Box sx={{ maxHeight: 200, overflowY: "auto", display: "flex", flexDirection: "column", gap: 0.5 }}>
-                  {suggestedDates.map((d) => (
-                    <FormControlLabel
-                      key={d}
-                      control={
-                        <Checkbox
-                          size="small"
-                          checked={form.dates.includes(d)}
-                          onChange={() => toggleDate(d)}
-                        />
-                      }
-                      label={
-                        <Typography variant="body2">
-                          {new Date(d).toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" })}
-                        </Typography>
-                      }
-                    />
-                  ))}
-                </Box>
-              </Box>
-
-              <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  onClick={handleSave}
-                  disabled={saving || !form.name.trim()}
-                >
-                  {saving ? "Speichere…" : editId !== null ? "Speichern" : "Erstellen"}
-                </Button>
-                {isEditing && (
-                  <Button
-                    variant="outlined"
-                    onClick={() => { setForm({ ...EMPTY_FORM }); setEditId(null); }}
-                  >
-                    Abbrechen
-                  </Button>
-                )}
+            <Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Verfügbar an
+              </Typography>
+              <Box sx={{ maxHeight: 200, overflowY: "auto", display: "flex", flexDirection: "column", gap: 0.5 }}>
+                {suggestedDates.map((d) => (
+                  <FormControlLabel
+                    key={d}
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={form.dates.includes(d)}
+                        onChange={() => toggleDate(d)}
+                      />
+                    }
+                    label={
+                      <Typography variant="body2">
+                        {new Date(d).toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" })}
+                      </Typography>
+                    }
+                  />
+                ))}
               </Box>
             </Box>
-          </CardContent>
-        </Card>
-      </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancel}>Abbrechen</Button>
+          <Button
+            variant="contained"
+            onClick={handleSave}
+            disabled={saving || !form.name.trim()}
+          >
+            {saving ? "Speichere…" : editId !== null ? "Speichern" : "Erstellen"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={!!toast}

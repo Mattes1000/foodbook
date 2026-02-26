@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getMenus, placeOrder, checkOrderForDate, deleteOrder } from "../api";
+import { getMenus, placeOrder, checkOrderForDate, deleteOrder, getAvailableDates } from "../api";
 import type { Menu } from "../types";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -15,6 +15,11 @@ import {
   IconButton,
 } from "@mui/material";
 import { CheckCircle, Login, Delete } from "@mui/icons-material";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import dayjs, { Dayjs } from "dayjs";
+import "dayjs/locale/de";
 import { Link } from "react-router-dom";
 
 function toDateStr(d: Date) {
@@ -27,10 +32,10 @@ function formatDate(iso: string) {
 
 export default function MenuPage() {
   const { user } = useAuth();
-  const today = new Date();
-  const dates = [0, 1, 2].map((o) => { const d = new Date(today); d.setDate(today.getDate() + o); return toDateStr(d); });
+  const today = dayjs();
 
-  const [selectedDate, setSelectedDate] = useState(dates[0]);
+  const [selectedDate, setSelectedDate] = useState<Dayjs>(today);
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [menus, setMenus] = useState<Menu[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasOrder, setHasOrder] = useState(false);
@@ -39,15 +44,21 @@ export default function MenuPage() {
   const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
+    getAvailableDates().then(setAvailableDates);
+  }, []);
+
+  useEffect(() => {
     setLoading(true);
-    getMenus(selectedDate)
+    const dateStr = selectedDate.format('YYYY-MM-DD');
+    getMenus(dateStr)
       .then(setMenus)
       .finally(() => setLoading(false));
   }, [selectedDate]);
 
   useEffect(() => {
     if (user) {
-      checkOrderForDate(user.id, selectedDate).then((res) => {
+      const dateStr = selectedDate.format('YYYY-MM-DD');
+      checkOrderForDate(user.id, dateStr).then((res) => {
         setHasOrder(res.hasOrder);
         setOrderedMenuId(res.menuId);
       });
@@ -69,10 +80,11 @@ export default function MenuPage() {
     setSuccess(null);
 
     try {
+      const dateStr = selectedDate.format('YYYY-MM-DD');
       const result = await placeOrder({
         customer_name: `${user.firstname} ${user.lastname}`,
         user_id: user.id,
-        order_date: selectedDate,
+        order_date: dateStr,
         menu_id: menu.id,
         quantity: 1,
       });
@@ -80,7 +92,7 @@ export default function MenuPage() {
       if ("error" in result) {
         setError(result.error);
       } else {
-        setSuccess(`Bestellung erfolgreich! ${menu.name} für ${formatDate(selectedDate)}`);
+        setSuccess(`Bestellung erfolgreich! ${menu.name} für ${formatDate(dateStr)}`);
         setHasOrder(true);
         setOrderedMenuId(menu.id);
       }
@@ -98,7 +110,8 @@ export default function MenuPage() {
     setSuccess(null);
 
     try {
-      const result = await deleteOrder(user.id, selectedDate);
+      const dateStr = selectedDate.format('YYYY-MM-DD');
+      const result = await deleteOrder(user.id, dateStr);
 
       if ("error" in result) {
         setError(result.error);
@@ -118,18 +131,28 @@ export default function MenuPage() {
         Speisekarte
       </Typography>
 
-      <Box sx={{ display: "flex", gap: 1, mb: 4, flexWrap: "wrap" }}>
-        {dates.map((d) => (
-          <Button
-            key={d}
-            variant={d === selectedDate ? "contained" : "outlined"}
-            onClick={() => setSelectedDate(d)}
-            size="small"
-          >
-            {formatDate(d)}
-          </Button>
-        ))}
-      </Box>
+      <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="de">
+        <Box sx={{ mb: 4 }}>
+          <DatePicker
+            label="Datum wählen"
+            value={selectedDate}
+            onChange={(newValue) => newValue && setSelectedDate(newValue)}
+            shouldDisableDate={(date) => {
+              const dateStr = date.format('YYYY-MM-DD');
+              const isBeforeToday = date.isBefore(today, 'day');
+              const isAvailable = availableDates.includes(dateStr);
+              return isBeforeToday || !isAvailable;
+            }}
+            slotProps={{
+              textField: {
+                fullWidth: true,
+                sx: { maxWidth: 400 }
+              }
+            }}
+            format="dddd, DD. MMMM YYYY"
+          />
+        </Box>
+      </LocalizationProvider>
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>

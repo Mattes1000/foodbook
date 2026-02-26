@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getOrders } from "../../api";
+import { getOrders, deleteOrderById } from "../../api";
 import type { Order } from "../../types";
 import {
   Box,
@@ -14,8 +14,16 @@ import {
   Chip,
   CircularProgress,
   Button,
+  IconButton,
+  Snackbar,
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from "@mui/material";
-import { ArrowUpward, ArrowDownward } from "@mui/icons-material";
+import { ArrowUpward, ArrowDownward, Delete } from "@mui/icons-material";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -34,10 +42,39 @@ export default function OrdersTab() {
   const [sortBy, setSortBy] = useState<"id" | "user" | "date" | "total">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [filterDate, setFilterDate] = useState<Dayjs | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{ orderId: number; customerName: string } | null>(null);
+
+  const loadOrders = () => {
+    setLoading(true);
+    getOrders().then(setOrders).finally(() => setLoading(false));
+  };
 
   useEffect(() => {
-    getOrders().then(setOrders).finally(() => setLoading(false));
+    loadOrders();
   }, []);
+
+  const openDeleteDialog = (orderId: number, customerName: string) => {
+    setDeleteDialog({ orderId, customerName });
+  };
+
+  const closeDeleteDialog = () => {
+    setDeleteDialog(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteDialog) return;
+    
+    try {
+      await deleteOrderById(deleteDialog.orderId);
+      setToast("Bestellung gelöscht.");
+      loadOrders();
+    } catch (err) {
+      setToast("Fehler beim Löschen der Bestellung.");
+    } finally {
+      closeDeleteDialog();
+    }
+  };
 
   const handleSort = (column: "id" | "user" | "date" | "total") => {
     if (sortBy === column) {
@@ -166,6 +203,7 @@ export default function OrdersTab() {
                     )}
                   </Box>
                 </TableCell>
+                <TableCell align="right">Aktionen</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -216,12 +254,51 @@ export default function OrdersTab() {
                       {o.total.toFixed(2)} €
                     </Typography>
                   </TableCell>
+                  <TableCell align="right">
+                    <IconButton 
+                      size="small" 
+                      color="error" 
+                      onClick={() => openDeleteDialog(o.id, o.user_fullname ?? o.customer_name)}
+                    >
+                      <Delete fontSize="small" />
+                    </IconButton>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </TableContainer>
       )}
+
+      <Dialog
+        open={!!deleteDialog}
+        onClose={closeDeleteDialog}
+      >
+        <DialogTitle>Bestellung löschen</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Möchtest du die Bestellung von <strong>{deleteDialog?.customerName}</strong> wirklich löschen?
+            Diese Aktion kann nicht rückgängig gemacht werden.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeDeleteDialog}>Abbrechen</Button>
+          <Button onClick={confirmDelete} color="error" variant="contained">
+            Löschen
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={!!toast}
+        autoHideDuration={3000}
+        onClose={() => setToast(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert severity="success" onClose={() => setToast(null)}>
+          {toast}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

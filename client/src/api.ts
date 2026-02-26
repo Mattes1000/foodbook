@@ -9,6 +9,11 @@ export async function getMenus(date?: string): Promise<Menu[]> {
   return res.json();
 }
 
+export async function getAvailableDates(): Promise<string[]> {
+  const res = await fetch(`${BASE}/menus/available-dates`);
+  return res.json();
+}
+
 export async function getAllMenus(): Promise<Menu[]> {
   const res = await fetch(`${BASE}/menus/all`);
   return res.json();
@@ -45,7 +50,9 @@ export async function updateMenu(id: number, data: MenuPayload): Promise<void> {
 }
 
 export async function copyMenu(id: number): Promise<{ id: number }> {
-  const res = await fetch(`${BASE}/menus/${id}/copy`, { method: "POST" });
+  const res = await fetch(`${BASE}/menus/${id}/copy`, {
+    method: "POST",
+  });
   return res.json();
 }
 
@@ -81,6 +88,13 @@ export async function getOrders(userId?: number): Promise<Order[]> {
 
 export async function deleteOrder(userId: number, date: string): Promise<{ success: boolean } | { error: string }> {
   const res = await fetch(`${BASE}/orders?user_id=${userId}&date=${date}`, {
+    method: "DELETE",
+  });
+  return res.json();
+}
+
+export async function deleteOrderById(orderId: number): Promise<{ success: boolean } | { error: string }> {
+  const res = await fetch(`${BASE}/orders/${orderId}`, {
     method: "DELETE",
   });
   return res.json();
