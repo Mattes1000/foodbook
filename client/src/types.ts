@@ -1,13 +1,3 @@
-export interface Meal {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  image_url: string | null;
-  active: number;
-  dates: string;
-}
-
 export interface Menu {
   id: number;
   name: string;

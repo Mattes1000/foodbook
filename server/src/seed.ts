@@ -8,8 +8,8 @@ const dates = [0, 1, 2].map((offset) => {
   return d.toISOString().split("T")[0];
 });
 
-const existingMeals = db.query("SELECT COUNT(*) as count FROM meals").get() as { count: number };
 const existingUsers = db.query("SELECT COUNT(*) as count FROM users").get() as { count: number };
+const existingMenus = db.query("SELECT COUNT(*) as count FROM menus").get() as { count: number };
 
 // Always ensure admin user exists (idempotent)
 const adminExists = db.query("SELECT id FROM users WHERE username = 'admin'").get();
@@ -31,7 +31,7 @@ if (!userExists) {
   console.log("Created test user (username: user, password: user).");
 }
 
-if (existingMeals.count > 0 && existingUsers.count > 0) {
+if (existingMenus.count > 0 && existingUsers.count > 0) {
   console.log("Seed already applied, skipping.");
   process.exit(0);
 }
@@ -58,49 +58,6 @@ if (existingUsers.count === 0) {
 
   console.log(`Seeded ${dummyUsers.length} users.`);
 }
-
-if (existingMeals.count > 0) {
-  console.log("Meals already seeded, skipping meals.");
-  process.exit(0);
-}
-
-const meals: { name: string; description: string; price: number }[] = [
-  { name: "Tomatensuppe", description: "Cremige Tomatensuppe mit Basilikum und Croutons", price: 5.9 },
-  { name: "Bruschetta", description: "Geröstetes Brot mit Tomaten, Knoblauch und Olivenöl", price: 6.5 },
-  { name: "Caesar Salad", description: "Römersalat mit Parmesan, Croutons und Caesar-Dressing", price: 7.5 },
-  { name: "Wiener Schnitzel", description: "Klassisches Wiener Schnitzel mit Kartoffelsalat und Zitrone", price: 16.9 },
-  { name: "Lachsfilet", description: "Gebratenes Lachsfilet mit Dillsauce und Reis", price: 18.5 },
-  { name: "Vegane Buddha Bowl", description: "Quinoa, geröstete Kichererbsen, Avocado und Tahini-Dressing", price: 13.9 },
-  { name: "Spaghetti Carbonara", description: "Klassische Carbonara mit Speck, Ei und Parmesan", price: 12.9 },
-  { name: "Rinderfilet", description: "Zartes Rinderfilet mit Pfefferrahmsauce und Kartoffelgratin", price: 24.9 },
-  { name: "Tiramisu", description: "Klassisches Tiramisu mit Mascarpone und Espresso", price: 6.9 },
-  { name: "Schokoladenmousse", description: "Luftiges Schokoladenmousse mit Schlagsahne", price: 5.9 },
-  { name: "Apfelstrudel", description: "Hausgemachter Apfelstrudel mit Vanillesauce", price: 6.5 },
-  { name: "Panna Cotta", description: "Italienische Panna Cotta mit Beerenkompott", price: 6.9 },
-];
-
-const insertMeal = db.prepare(
-  "INSERT INTO meals (name, description, price) VALUES ($name, $description, $price)"
-);
-const insertDay = db.prepare(
-  "INSERT OR IGNORE INTO meal_days (meal_id, available_date) VALUES ($meal_id, $available_date)"
-);
-
-const mealIds: number[] = [];
-
-const insertAllMeals = db.transaction(() => {
-  for (const meal of meals) {
-    insertMeal.run({ $name: meal.name, $description: meal.description, $price: meal.price });
-    const row = db.query("SELECT last_insert_rowid() as id").get() as { id: number };
-    mealIds.push(row.id);
-    for (const date of dates) {
-      insertDay.run({ $meal_id: row.id, $available_date: date });
-    }
-  }
-});
-
-insertAllMeals();
-console.log(`Seeded ${meals.length} meals for dates: ${dates.join(", ")}`);
 
 // Seed menus
 const menus: { name: string; description: string; price: number }[] = [

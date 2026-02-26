@@ -1,4 +1,3 @@
-import { handleMeals } from "./routes/meals";
 import { handleMenus } from "./routes/menus";
 import { handleOrders } from "./routes/orders";
 import { handleUsers } from "./routes/users";
@@ -44,8 +43,6 @@ const server = Bun.serve({
       res = Response.json({ ok: true });
     } else if (url.pathname.startsWith("/api/menus")) {
       res = await handleMenus(req, url);
-    } else if (url.pathname.startsWith("/api/meals")) {
-      res = await handleMeals(req, url);
     } else if (url.pathname.startsWith("/api/orders")) {
       res = await handleOrders(req, url);
     } else if (url.pathname.startsWith("/api/users") || url.pathname.startsWith("/api/auth")) {

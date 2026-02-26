@@ -28,7 +28,7 @@ import {
   Alert,
   IconButton,
 } from "@mui/material";
-import { ContentCopy, Delete, Edit as EditIcon } from "@mui/icons-material";
+import { ContentCopy, Delete, Edit as EditIcon, ArrowUpward, ArrowDownward } from "@mui/icons-material";
 
 const EMPTY_FORM = {
   name: "",
@@ -58,6 +58,8 @@ export default function MenusTab() {
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"name" | "price" | "status">("name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
   const suggestedDates = getNextDays(7);
 
@@ -69,6 +71,27 @@ export default function MenusTab() {
       })
       .finally(() => setLoading(false));
   };
+
+  const handleSort = (column: "name" | "price" | "status") => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(column);
+      setSortOrder("asc");
+    }
+  };
+
+  const sortedMenus = [...menus].sort((a, b) => {
+    let comparison = 0;
+    if (sortBy === "name") {
+      comparison = a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+    } else if (sortBy === "price") {
+      comparison = a.price - b.price;
+    } else if (sortBy === "status") {
+      comparison = (a.active ? 1 : 0) - (b.active ? 1 : 0);
+    }
+    return sortOrder === "asc" ? comparison : -comparison;
+  });
 
   useEffect(() => {
     load();
@@ -171,15 +194,46 @@ export default function MenusTab() {
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>Name</TableCell>
+                  <TableCell 
+                    onClick={() => handleSort("name")}
+                    sx={{ cursor: "pointer", userSelect: "none" }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                      Name
+                      {sortBy === "name" && (
+                        sortOrder === "asc" ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />
+                      )}
+                    </Box>
+                  </TableCell>
                   <TableCell>Speisen</TableCell>
-                  <TableCell align="right">Preis</TableCell>
-                  <TableCell>Status</TableCell>
+                  <TableCell 
+                    align="right"
+                    onClick={() => handleSort("price")}
+                    sx={{ cursor: "pointer", userSelect: "none" }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 0.5 }}>
+                      Preis
+                      {sortBy === "price" && (
+                        sortOrder === "asc" ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />
+                      )}
+                    </Box>
+                  </TableCell>
+                  <TableCell 
+                    onClick={() => handleSort("status")}
+                    sx={{ cursor: "pointer", userSelect: "none" }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                      Status
+                      {sortBy === "status" && (
+                        sortOrder === "asc" ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />
+                      )}
+                    </Box>
+                  </TableCell>
                   <TableCell align="right">Aktionen</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {menus.map((menu) => (
+                {sortedMenus.map((menu) => (
                   <TableRow key={menu.id} hover>
                     <TableCell>
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>

@@ -1,56 +1,6 @@
-import type { Meal, Menu, Order, User } from "./types";
-
-export interface MealPayload {
-  name: string;
-  description: string;
-  price: number;
-  active?: number;
-  dates: string[];
-}
+import type { Menu, Order, User } from "./types";
 
 const BASE = "/api";
-
-export async function getMeals(date?: string): Promise<Meal[]> {
-  const q = date ? `?date=${date}` : "";
-  const res = await fetch(`${BASE}/meals${q}`);
-  return res.json();
-}
-
-export async function getAllMeals(): Promise<Meal[]> {
-  const res = await fetch(`${BASE}/meals/all`);
-  return res.json();
-}
-
-export async function getMeal(id: number): Promise<Meal & { dates: string[] }> {
-  const res = await fetch(`${BASE}/meals/${id}`);
-  return res.json();
-}
-
-export async function createMeal(data: MealPayload): Promise<{ id: number }> {
-  const res = await fetch(`${BASE}/meals`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  return res.json();
-}
-
-export async function updateMeal(id: number, data: MealPayload): Promise<void> {
-  await fetch(`${BASE}/meals/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-}
-
-export async function copyMeal(id: number): Promise<{ id: number }> {
-  const res = await fetch(`${BASE}/meals/${id}/copy`, { method: "POST" });
-  return res.json();
-}
-
-export async function deleteMeal(id: number): Promise<void> {
-  await fetch(`${BASE}/meals/${id}`, { method: "DELETE" });
-}
 
 // Menu API
 export async function getMenus(date?: string): Promise<Menu[]> {
@@ -176,4 +126,11 @@ export async function updateUser(id: number, data: { firstname: string; lastname
 
 export async function deleteUser(id: number): Promise<void> {
   await fetch(`${BASE}/users/${id}`, { method: "DELETE" });
+}
+
+export async function regenerateQrToken(id: number): Promise<{ qr_token: string }> {
+  const res = await fetch(`${BASE}/users/${id}/regenerate-qr`, {
+    method: "POST",
+  });
+  return res.json();
 }

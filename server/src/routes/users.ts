@@ -67,6 +67,16 @@ export async function handleUsers(req: Request, url: URL): Promise<Response | nu
     return Response.json({ ok: true });
   }
 
+  // POST /api/users/:id/regenerate-qr — QR-Token neu generieren
+  const matchRegenerate = path.match(/^\/api\/users\/(\d+)\/regenerate-qr$/);
+  if (req.method === "POST" && matchRegenerate) {
+    const id = parseInt(matchRegenerate[1]);
+    const newToken = randomUUID();
+    db.query("UPDATE users SET qr_token = $qr_token WHERE id = $id")
+      .run({ $qr_token: newToken, $id: id });
+    return Response.json({ qr_token: newToken });
+  }
+
   // DELETE /api/users/:id
   const matchDel = path.match(/^\/api\/users\/(\d+)$/);
   if (req.method === "DELETE" && matchDel) {

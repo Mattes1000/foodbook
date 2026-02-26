@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import QRCode from "qrcode";
-import { getUsers, createUser, updateUser, deleteUser } from "../../api";
+import { getUsers, createUser, updateUser, deleteUser, regenerateQrToken } from "../../api";
 import type { User } from "../../types";
 import {
   Box,
@@ -30,7 +30,7 @@ import {
   CardContent,
   IconButton,
 } from "@mui/material";
-import { QrCode2, Edit, Delete } from "@mui/icons-material";
+import { QrCode2, Edit, Delete, Print, Refresh, ArrowUpward, ArrowDownward } from "@mui/icons-material";
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "Admin",
@@ -54,19 +54,54 @@ export default function UsersTab() {
   const [saving, setSaving] = useState(false);
   const [qrModal, setQrModal] = useState<User | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const qrCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  const [regenerating, setRegenerating] = useState(false);
+  const [sortBy, setSortBy] = useState<"name" | "role">("name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
   const load = () => {
     setLoading(true);
     getUsers().then(setUsers).finally(() => setLoading(false));
   };
 
+  const handleSort = (column: "name" | "role") => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(column);
+      setSortOrder("asc");
+    }
+  };
+
+  const sortedUsers = [...users].sort((a, b) => {
+    let comparison = 0;
+    if (sortBy === "name") {
+      const nameA = `${a.firstname} ${a.lastname}`.toLowerCase();
+      const nameB = `${b.firstname} ${b.lastname}`.toLowerCase();
+      comparison = nameA.localeCompare(nameB);
+    } else if (sortBy === "role") {
+      comparison = a.role.localeCompare(b.role);
+    }
+    return sortOrder === "asc" ? comparison : -comparison;
+  });
+
   useEffect(() => { load(); }, []);
 
   useEffect(() => {
-    if (qrModal && qrCanvasRef.current) {
+    if (qrModal) {
       const loginUrl = `${window.location.origin}/login/${qrModal.qr_token}`;
-      QRCode.toCanvas(qrCanvasRef.current, loginUrl, { width: 240, margin: 2 });
+      QRCode.toDataURL(loginUrl, { 
+        width: 300, 
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      }).then((url) => {
+        setQrDataUrl(url);
+      }).catch((err) => {
+        console.error('QR Code generation failed:', err);
+      });
     }
   }, [qrModal]);
 
@@ -110,6 +145,26 @@ export default function UsersTab() {
     load();
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleRegenerateQr = async () => {
+    if (!qrModal) return;
+    setRegenerating(true);
+    try {
+      const result = await regenerateQrToken(qrModal.id);
+      const updatedUser = { ...qrModal, qr_token: result.qr_token };
+      setQrModal(updatedUser);
+      setUsers(users.map(u => u.id === qrModal.id ? updatedUser : u));
+      showToast("QR-Code wurde neu generiert");
+    } catch (err) {
+      showToast("Fehler beim Regenerieren des QR-Codes");
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
   return (
     <Box sx={{ display: "flex", gap: 3 }}>
       <Box sx={{ flexGrow: 1, minWidth: 0 }}>
@@ -126,13 +181,33 @@ export default function UsersTab() {
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Rolle</TableCell>
+                  <TableCell 
+                    onClick={() => handleSort("name")}
+                    sx={{ cursor: "pointer", userSelect: "none" }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                      Name
+                      {sortBy === "name" && (
+                        sortOrder === "asc" ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />
+                      )}
+                    </Box>
+                  </TableCell>
+                  <TableCell 
+                    onClick={() => handleSort("role")}
+                    sx={{ cursor: "pointer", userSelect: "none" }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                      Rolle
+                      {sortBy === "role" && (
+                        sortOrder === "asc" ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />
+                      )}
+                    </Box>
+                  </TableCell>
                   <TableCell align="right">Aktionen</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {users.map((u) => (
+                {sortedUsers.map((u) => (
                   <TableRow key={u.id} hover>
                     <TableCell>
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>
@@ -248,24 +323,82 @@ export default function UsersTab() {
       </Box>
 
       <Dialog open={!!qrModal} onClose={() => setQrModal(null)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ textAlign: "center" }}>
+        <style>{`
+          @media print {
+            @page {
+              margin: 2cm;
+            }
+            body * {
+              visibility: hidden;
+            }
+            .print-area,
+            .print-area * {
+              visibility: visible;
+            }
+            .print-area {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+              page-break-inside: avoid;
+              text-align: center;
+              padding: 40px 20px;
+            }
+            .print-username {
+              font-size: 32px !important;
+              font-weight: 700 !important;
+              color: #000 !important;
+              margin-bottom: 30px !important;
+              display: block !important;
+            }
+            .print-qr {
+              display: block !important;
+              margin: 0 auto !important;
+              max-width: 300px !important;
+              height: auto !important;
+            }
+            .no-print {
+              display: none !important;
+              visibility: hidden !important;
+            }
+          }
+        `}</style>
+        <DialogTitle sx={{ textAlign: "center" }} className="no-print">
           {qrModal?.firstname} {qrModal?.lastname}
         </DialogTitle>
         <DialogContent sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-          <Typography variant="caption" color="text.secondary" textAlign="center">
-            QR-Code scannen zum Anmelden
-          </Typography>
-          <canvas ref={qrCanvasRef} style={{ borderRadius: 8 }} />
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ fontFamily: "monospace", wordBreak: "break-all", textAlign: "center" }}
-          >
-            /login/{qrModal?.qr_token}
-          </Typography>
+          <div className="print-area">
+            <div className="print-username">
+              {qrModal?.firstname} {qrModal?.lastname}
+            </div>
+            <Typography variant="caption" color="text.secondary" textAlign="center" className="no-print" sx={{ mb: 2 }}>
+              QR-Code scannen zum Anmelden
+            </Typography>
+            {qrDataUrl && <img src={qrDataUrl} alt="QR Code" className="print-qr" style={{ borderRadius: 8, maxWidth: '100%', height: 'auto' }} />}
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ fontFamily: "monospace", wordBreak: "break-all", textAlign: "center", mt: 2, display: "block" }}
+              className="no-print"
+            >
+              /login/{qrModal?.qr_token}
+            </Typography>
+          </div>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setQrModal(null)} fullWidth>
+        <DialogActions className="no-print">
+          <Button 
+            onClick={handleRegenerateQr} 
+            startIcon={<Refresh />}
+            disabled={regenerating}
+            color="warning"
+          >
+            {regenerating ? "Regeneriere..." : "QR-Code neu generieren"}
+          </Button>
+          <Box sx={{ flex: 1 }} />
+          <Button onClick={handlePrint} startIcon={<Print />}>
+            Drucken
+          </Button>
+          <Button onClick={() => setQrModal(null)} variant="contained">
             Schließen
           </Button>
         </DialogActions>

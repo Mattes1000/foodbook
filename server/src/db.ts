@@ -26,23 +26,6 @@ try {
 } catch { /* table doesn't exist yet, will be created below */ }
 
 db.exec(`
-  CREATE TABLE IF NOT EXISTS meals (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    description TEXT,
-    price REAL NOT NULL,
-    image_url TEXT,
-    active INTEGER NOT NULL DEFAULT 1,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  );
-
-  CREATE TABLE IF NOT EXISTS meal_days (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    meal_id INTEGER NOT NULL REFERENCES meals(id) ON DELETE CASCADE,
-    available_date TEXT NOT NULL,
-    UNIQUE(meal_id, available_date)
-  );
-
   CREATE TABLE IF NOT EXISTS menus (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
