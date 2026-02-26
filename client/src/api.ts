@@ -24,12 +24,18 @@ export async function getMenu(id: number): Promise<Menu & { dates: string[] }> {
   return res.json();
 }
 
+export interface MenuDay {
+  available_date: string;
+  max_quantity: number | null;
+}
+
 export interface MenuPayload {
   name: string;
   description: string;
   price: number;
   active?: number;
   dates: string[];
+  menuDays?: MenuDay[];
 }
 
 export async function createMenu(data: MenuPayload): Promise<{ id: number }> {
@@ -142,7 +148,7 @@ export async function getUsers(): Promise<User[]> {
   return res.json();
 }
 
-export async function createUser(data: { firstname: string; lastname: string; role: string }): Promise<{ id: number; qr_token: string }> {
+export async function createUser(data: { firstname: string; lastname: string; role: string }): Promise<{ id: number; qr_token: string; tempPassword: string }> {
   const res = await fetch(`${BASE}/users`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

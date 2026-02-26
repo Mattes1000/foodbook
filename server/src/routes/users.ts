@@ -50,10 +50,18 @@ export async function handleUsers(req: Request, url: URL): Promise<Response | nu
       return new Response("Bad Request", { status: 400 });
     }
     const qr_token = randomUUID();
-    db.query("INSERT INTO users (firstname, lastname, role, qr_token) VALUES ($firstname, $lastname, $role, $qr_token)")
-      .run({ $firstname: firstname, $lastname: lastname, $role: role, $qr_token: qr_token });
+    
+    // Generiere Username aus Vor- und Nachname
+    const username = `${firstname.toLowerCase()}.${lastname.toLowerCase()}`;
+    
+    // Generiere temporäres Passwort (8 Zeichen: Buchstaben + Zahlen)
+    const tempPassword = Math.random().toString(36).slice(2, 10).toUpperCase();
+    const password_hash = await Bun.password.hash(tempPassword);
+    
+    db.query("INSERT INTO users (firstname, lastname, role, qr_token, username, password_hash) VALUES ($firstname, $lastname, $role, $qr_token, $username, $password_hash)")
+      .run({ $firstname: firstname, $lastname: lastname, $role: role, $qr_token: qr_token, $username: username, $password_hash: password_hash });
     const row = db.query("SELECT last_insert_rowid() as id").get() as { id: number };
-    return Response.json({ id: row.id, qr_token }, { status: 201 });
+    return Response.json({ id: row.id, qr_token, tempPassword }, { status: 201 });
   }
 
   // PUT /api/users/:id

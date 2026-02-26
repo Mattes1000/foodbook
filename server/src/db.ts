@@ -25,6 +25,14 @@ try {
   }
 } catch { /* table doesn't exist yet, will be created below */ }
 
+// Migration: add max_quantity to menu_days if missing
+try {
+  const mdcols = db.query("PRAGMA table_info(menu_days)").all() as { name: string }[];
+  if (mdcols.length > 0 && !mdcols.find((c) => c.name === "max_quantity")) {
+    db.exec("ALTER TABLE menu_days ADD COLUMN max_quantity INTEGER;");
+  }
+} catch { /* table doesn't exist yet, will be created below */ }
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS menus (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -39,6 +47,7 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     menu_id INTEGER NOT NULL REFERENCES menus(id) ON DELETE CASCADE,
     available_date TEXT NOT NULL,
+    max_quantity INTEGER,
     UNIQUE(menu_id, available_date)
   );
 

@@ -20,7 +20,8 @@ export default function AdminPage() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  const activeTab = (searchParams.get("tab") as Tab) || "menus";
+  const defaultTab = user?.role === "admin" ? "menus" : "orders";
+  const activeTab = (searchParams.get("tab") as Tab) || defaultTab;
   
   const setActiveTab = (tab: Tab) => {
     setSearchParams({ tab });
@@ -29,10 +30,11 @@ export default function AdminPage() {
   // Validate tab on mount
   useEffect(() => {
     const tab = searchParams.get("tab") as Tab;
-    if (!tab || !["menus", "users", "orders"].includes(tab)) {
-      setSearchParams({ tab: "menus" }, { replace: true });
+    const validTabs = user?.role === "admin" ? ["menus", "users", "orders"] : ["orders"];
+    if (!tab || !validTabs.includes(tab)) {
+      setSearchParams({ tab: defaultTab }, { replace: true });
     }
-  }, []);
+  }, [user]);
 
   if (!user || (user.role !== "admin" && user.role !== "manager")) {
     return (
@@ -53,7 +55,7 @@ export default function AdminPage() {
   }
 
   const tabs: { id: Tab; label: string; visible: boolean }[] = [
-    { id: "menus",  label: "📋 Menüs",        visible: true },
+    { id: "menus",  label: "📋 Menüs",        visible: user.role === "admin" },
     { id: "users",  label: "👤 Benutzer",     visible: user.role === "admin" },
     { id: "orders", label: "📦 Bestellungen", visible: true },
   ];
@@ -70,7 +72,7 @@ export default function AdminPage() {
         ))}
       </Tabs>
 
-      {activeTab === "menus" && <MenusTab />}
+      {activeTab === "menus" && user.role === "admin" && <MenusTab />}
       {activeTab === "users" && user.role === "admin" && <UsersTab />}
       {activeTab === "orders" && <OrdersTab />}
     </Box>

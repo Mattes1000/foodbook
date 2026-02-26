@@ -9,14 +9,34 @@ export async function handleMenus(req: Request, url: URL): Promise<Response | nu
     const rows = db.query(`
       SELECT 
         m.*,
+        md.max_quantity,
         GROUP_CONCAT(md.available_date) as dates
       FROM menus m
       JOIN menu_days md ON md.menu_id = m.id
       WHERE m.active = 1 AND md.available_date = $date
       GROUP BY m.id
       ORDER BY m.name
-    `).all({ $date: date });
-    return Response.json(rows);
+    `).all({ $date: date }) as any[];
+    
+    // Calculate remaining quantity for each menu
+    const menusWithAvailability = rows.map(menu => {
+      if (menu.max_quantity !== null) {
+        const orderedCount = db.query(`
+          SELECT COALESCE(SUM(oi.quantity), 0) as total
+          FROM order_items oi
+          JOIN orders o ON o.id = oi.order_id
+          WHERE oi.menu_id = $menu_id AND o.order_date = $date
+        `).get({ $menu_id: menu.id, $date: date }) as { total: number };
+        
+        return {
+          ...menu,
+          remaining_quantity: menu.max_quantity - orderedCount.total
+        };
+      }
+      return { ...menu, remaining_quantity: null };
+    });
+    
+    return Response.json(menusWithAvailability);
   }
 
   // GET /api/menus/all (admin)
@@ -51,8 +71,12 @@ export async function handleMenus(req: Request, url: URL): Promise<Response | nu
     const id = parseInt(matchGet[1]);
     const menu = db.query(`SELECT * FROM menus WHERE id = $id`).get({ $id: id });
     if (!menu) return new Response("Not Found", { status: 404 });
-    const dates = db.query(`SELECT available_date FROM menu_days WHERE menu_id = $id ORDER BY available_date`).all({ $id: id });
-    return Response.json({ ...menu as object, dates: (dates as { available_date: string }[]).map((d) => d.available_date) });
+    const menuDays = db.query(`SELECT available_date, max_quantity FROM menu_days WHERE menu_id = $id ORDER BY available_date`).all({ $id: id }) as { available_date: string; max_quantity: number | null }[];
+    return Response.json({ 
+      ...menu as object, 
+      dates: menuDays.map((d) => d.available_date),
+      menuDays: menuDays
+    });
   }
 
   // POST /api/menus
@@ -83,7 +107,7 @@ export async function handleMenus(req: Request, url: URL): Promise<Response | nu
 
 async function handleCreate(req: Request): Promise<Response> {
   const body = await req.json();
-  const { name, description, price, active = 1, dates = [] } = body;
+  const { name, description, price, active = 1, dates = [], menuDays = [] } = body;
   
   const result = db.query(`
     INSERT INTO menus (name, description, price, active)
@@ -97,8 +121,18 @@ async function handleCreate(req: Request): Promise<Response> {
   
   const menuId = result.lastInsertRowid as number;
   
-  // Insert dates
-  if (dates.length > 0) {
+  // Insert dates with max_quantity
+  if (menuDays.length > 0) {
+    const insertDate = db.prepare("INSERT INTO menu_days (menu_id, available_date, max_quantity) VALUES ($menu_id, $date, $max_quantity)");
+    for (const menuDay of menuDays) {
+      insertDate.run({ 
+        $menu_id: menuId, 
+        $date: menuDay.available_date, 
+        $max_quantity: menuDay.max_quantity || null 
+      });
+    }
+  } else if (dates.length > 0) {
+    // Fallback for old format
     const insertDate = db.prepare("INSERT INTO menu_days (menu_id, available_date) VALUES ($menu_id, $date)");
     for (const date of dates) {
       insertDate.run({ $menu_id: menuId, $date: date });
@@ -110,7 +144,7 @@ async function handleCreate(req: Request): Promise<Response> {
 
 async function handleUpdate(req: Request, id: number): Promise<Response> {
   const body = await req.json();
-  const { name, description, price, active, dates = [] } = body;
+  const { name, description, price, active, dates = [], menuDays = [] } = body;
   
   db.query(`
     UPDATE menus 
@@ -127,7 +161,17 @@ async function handleUpdate(req: Request, id: number): Promise<Response> {
   // Update dates
   db.query("DELETE FROM menu_days WHERE menu_id = $id").run({ $id: id });
   
-  if (dates.length > 0) {
+  if (menuDays.length > 0) {
+    const insertDate = db.prepare("INSERT INTO menu_days (menu_id, available_date, max_quantity) VALUES ($menu_id, $date, $max_quantity)");
+    for (const menuDay of menuDays) {
+      insertDate.run({ 
+        $menu_id: id, 
+        $date: menuDay.available_date, 
+        $max_quantity: menuDay.max_quantity || null 
+      });
+    }
+  } else if (dates.length > 0) {
+    // Fallback for old format
     const insertDate = db.prepare("INSERT INTO menu_days (menu_id, available_date) VALUES ($menu_id, $date)");
     for (const date of dates) {
       insertDate.run({ $menu_id: id, $date: date });

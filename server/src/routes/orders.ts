@@ -114,10 +114,42 @@ export async function handleOrders(req: Request, url: URL): Promise<Response | n
       }
     }
 
-    // Get menu price
+    // Get menu price and check availability
     const menu = db.query("SELECT price FROM menus WHERE id = $id").get({ $id: menu_id }) as { price: number } | null;
     if (!menu) {
       return Response.json({ error: "Menü nicht gefunden." }, { status: 404 });
+    }
+
+    // Check max_quantity limit for this menu on this date
+    const menuDay = db.query(`
+      SELECT max_quantity FROM menu_days 
+      WHERE menu_id = $menu_id AND available_date = $date
+    `).get({ $menu_id: menu_id, $date: targetDate }) as { max_quantity: number | null } | null;
+
+    if (menuDay && menuDay.max_quantity !== null) {
+      // Count already ordered quantity for this menu on this date
+      const orderedCount = db.query(`
+        SELECT COALESCE(SUM(oi.quantity), 0) as total
+        FROM order_items oi
+        JOIN orders o ON o.id = oi.order_id
+        WHERE oi.menu_id = $menu_id AND o.order_date = $date
+      `).get({ $menu_id: menu_id, $date: targetDate }) as { total: number };
+
+      const remaining = menuDay.max_quantity - orderedCount.total;
+      
+      if (remaining <= 0) {
+        return Response.json(
+          { error: "Dieses Menü ist für diesen Tag bereits ausverkauft." },
+          { status: 400 }
+        );
+      }
+      
+      if (quantity > remaining) {
+        return Response.json(
+          { error: `Nur noch ${remaining} Stück verfügbar.` },
+          { status: 400 }
+        );
+      }
     }
 
     const total = menu.price * quantity;

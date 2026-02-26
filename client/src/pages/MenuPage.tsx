@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { getMenus, placeOrder, checkOrderForDate, deleteOrder, getAvailableDates } from "../api";
-import type { Menu } from "../types";
+import { getMenus, placeOrder, checkOrderForDate, deleteOrder, getAvailableDates, getUsers } from "../api";
+import type { Menu, User } from "../types";
 import { useAuth } from "../context/AuthContext";
 import {
   Box,
@@ -13,6 +13,14 @@ import {
   Alert,
   Chip,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import { CheckCircle, Login, Delete } from "@mui/icons-material";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -38,10 +46,19 @@ export default function MenuPage() {
   const [orderedMenuId, setOrderedMenuId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [adminDialogOpen, setAdminDialogOpen] = useState(false);
+  const [selectedMenu, setSelectedMenu] = useState<Menu | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+
+  const isAdmin = user && (user.role === "admin" || user.role === "manager");
 
   useEffect(() => {
     getAvailableDates().then(setAvailableDates);
-  }, []);
+    if (isAdmin) {
+      getUsers().then(setUsers);
+    }
+  }, [isAdmin]);
 
   useEffect(() => {
     setLoading(true);
@@ -72,14 +89,27 @@ export default function MenuPage() {
       return;
     }
 
+    // Admin/Manager: Zeige Dialog zur Benutzerauswahl
+    if (isAdmin) {
+      setSelectedMenu(menu);
+      setSelectedUserId(null);
+      setAdminDialogOpen(true);
+      return;
+    }
+
+    // Normale Benutzer: Direkt bestellen
+    await placeOrderForUser(menu, user.id, `${user.firstname} ${user.lastname}`);
+  };
+
+  const placeOrderForUser = async (menu: Menu, userId: number, customerName: string) => {
     setError(null);
     setSuccess(null);
 
     try {
       const dateStr = selectedDate.format('YYYY-MM-DD');
       const result = await placeOrder({
-        customer_name: `${user.firstname} ${user.lastname}`,
-        user_id: user.id,
+        customer_name: customerName,
+        user_id: userId,
         order_date: dateStr,
         menu_id: menu.id,
         quantity: 1,
@@ -88,18 +118,39 @@ export default function MenuPage() {
       if ("error" in result) {
         setError(result.error);
       } else {
-        setSuccess(`Bestellung erfolgreich! ${menu.name} für ${formatDate(dateStr)}`);
-        setHasOrder(true);
-        setOrderedMenuId(menu.id);
+        setSuccess(`Bestellung erfolgreich! ${menu.name} für ${customerName} am ${formatDate(dateStr)}`);
+        if (userId === user?.id) {
+          setHasOrder(true);
+          setOrderedMenuId(menu.id);
+        }
+        // Aktualisiere Menüs, um verfügbare Menge zu aktualisieren
+        getMenus(dateStr).then(setMenus);
       }
-    } catch (err) {
+    } catch {
       setError("Fehler beim Bestellen. Bitte versuche es erneut.");
     }
   };
 
+  const handleAdminOrderConfirm = async () => {
+    if (!selectedMenu || !selectedUserId) return;
+
+    const selectedUser = users.find(u => u.id === selectedUserId);
+    if (!selectedUser) return;
+
+    await placeOrderForUser(
+      selectedMenu,
+      selectedUserId,
+      `${selectedUser.firstname} ${selectedUser.lastname}`
+    );
+
+    setAdminDialogOpen(false);
+    setSelectedMenu(null);
+    setSelectedUserId(null);
+  };
+
   const handleCancelOrder = async (event: React.MouseEvent) => {
     event.stopPropagation();
-    
+
     if (!user) return;
 
     setError(null);
@@ -115,8 +166,11 @@ export default function MenuPage() {
         setSuccess("Bestellung erfolgreich storniert.");
         setHasOrder(false);
         setOrderedMenuId(null);
+        // Aktualisiere Menüs, um verfügbare Menge zu aktualisieren
+        const dateStr = selectedDate.format('YYYY-MM-DD');
+        getMenus(dateStr).then(setMenus);
       }
-    } catch (err) {
+    } catch {
       setError("Fehler beim Stornieren. Bitte versuche es erneut.");
     }
   };
@@ -178,7 +232,7 @@ export default function MenuPage() {
         <Grid container spacing={3}>
           {menus.map((menu) => {
             const isOrdered = orderedMenuId === menu.id;
-            
+
             return (
               <Grid item xs={12} sm={6} md={4} key={menu.id}>
                 <Card
@@ -210,7 +264,7 @@ export default function MenuPage() {
                           deleteIcon={
                             <IconButton
                               size="small"
-                              sx={{ 
+                              sx={{
                                 padding: 0,
                                 "&:hover": { color: "error.main" }
                               }}
@@ -221,18 +275,31 @@ export default function MenuPage() {
                         />
                       )}
                     </Box>
-                    
+
                     {menu.description && (
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 2, whiteSpace: "pre-line" }}>
                         {menu.description}
                       </Typography>
                     )}
 
+                    {(menu as any).max_quantity !== null && (menu as any).max_quantity !== undefined && (
+                      <Box sx={{ mb: 2 }}>
+                        {(menu as any).remaining_quantity !== null && (menu as any).remaining_quantity !== undefined && (
+                          <Chip
+                            label={`Noch ${(menu as any).remaining_quantity} von ${(menu as any).max_quantity} verfügbar`}
+                            size="small"
+                            color={(menu as any).remaining_quantity > 0 ? "default" : "error"}
+                            sx={{ fontWeight: 600 }}
+                          />
+                        )}
+                      </Box>
+                    )}
+
                     <Box sx={{ mt: "auto", pt: 2, borderTop: 1, borderColor: "divider" }}>
                       <Typography variant="h6" color="primary" sx={{ fontWeight: 700, mb: 2, whiteSpace: "nowrap" }}>
                         {menu.price.toFixed(2).replace('.', ',')}&nbsp;€
                       </Typography>
-                      
+
                       {!user ? (
                         <Button
                           fullWidth
@@ -243,7 +310,7 @@ export default function MenuPage() {
                         >
                           Anmelden zum Bestellen
                         </Button>
-                      ) : isOrdered ? (
+                      ) : isOrdered && !isAdmin ? (
                         <Button
                           fullWidth
                           variant="contained"
@@ -253,7 +320,7 @@ export default function MenuPage() {
                         >
                           Bereits bestellt
                         </Button>
-                      ) : hasOrder ? (
+                      ) : hasOrder && !isAdmin ? (
                         <Button
                           fullWidth
                           variant="outlined"
@@ -261,13 +328,22 @@ export default function MenuPage() {
                         >
                           Bereits für heute bestellt
                         </Button>
+                      ) : (menu as any).remaining_quantity === 0 ? (
+                        <Button
+                          fullWidth
+                          variant="outlined"
+                          color="error"
+                          disabled
+                        >
+                          Ausverkauft
+                        </Button>
                       ) : (
                         <Button
                           fullWidth
                           variant="contained"
                           onClick={() => handleOrder(menu)}
                         >
-                          Jetzt bestellen
+                          {isAdmin ? "Bestellung aufgeben" : "Jetzt bestellen"}
                         </Button>
                       )}
                     </Box>
@@ -278,6 +354,44 @@ export default function MenuPage() {
           })}
         </Grid>
       )}
+
+      <Dialog open={adminDialogOpen} onClose={() => setAdminDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Bestellung für Benutzer aufgeben</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}>
+            {selectedMenu && (
+              <Alert severity="info">
+                Menü: <strong>{selectedMenu.name}</strong> ({selectedMenu.price.toFixed(2).replace('.', ',')}&nbsp;€)
+              </Alert>
+            )}
+            
+            <FormControl fullWidth>
+              <InputLabel>Benutzer auswählen</InputLabel>
+              <Select
+                value={selectedUserId ?? ""}
+                label="Benutzer auswählen"
+                onChange={(e) => setSelectedUserId(Number(e.target.value))}
+              >
+                {users.map((u) => (
+                  <MenuItem key={u.id} value={u.id}>
+                    {u.firstname} {u.lastname} ({u.role})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAdminDialogOpen(false)}>Abbrechen</Button>
+          <Button
+            variant="contained"
+            onClick={handleAdminOrderConfirm}
+            disabled={!selectedUserId}
+          >
+            Bestellung aufgeben
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

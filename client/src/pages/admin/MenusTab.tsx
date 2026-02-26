@@ -35,12 +35,18 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { Dayjs } from "dayjs";
 import "dayjs/locale/de";
 
+interface MenuDay {
+  available_date: string;
+  max_quantity: number | null;
+}
+
 const EMPTY_FORM = {
   name: "",
   description: "",
   price: "",
   active: 1,
   dates: [] as string[],
+  menuDays: [] as MenuDay[],
 };
 
 
@@ -118,6 +124,7 @@ export default function MenusTab() {
       price: menu.price.toString(),
       active: menu.active,
       dates: menu.dates || [],
+      menuDays: menu.menuDays || [],
     });
     setDialogOpen(true);
   };
@@ -136,6 +143,7 @@ export default function MenusTab() {
         price: parseFloat(form.price),
         active: form.active,
         dates: form.dates,
+        menuDays: form.menuDays,
       };
 
       if (editId !== null) {
@@ -176,11 +184,15 @@ export default function MenusTab() {
 
   const addDate = () => {
     if (!selectedDate) return;
-    const dateStr = selectedDate.format('YYYY-MM-DD');
-    if (!form.dates.includes(dateStr)) {
+    const dateStr = selectedDate.format("YYYY-MM-DD");
+    if (!form.menuDays.find((md) => md.available_date === dateStr)) {
       setForm((prev) => ({
         ...prev,
         dates: [...prev.dates, dateStr].sort(),
+        menuDays: [
+          ...prev.menuDays,
+          { available_date: dateStr, max_quantity: null },
+        ].sort((a, b) => a.available_date.localeCompare(b.available_date)),
       }));
     }
     setSelectedDate(null);
@@ -190,6 +202,19 @@ export default function MenusTab() {
     setForm((prev) => ({
       ...prev,
       dates: prev.dates.filter((d) => d !== date),
+      menuDays: prev.menuDays.filter((md) => md.available_date !== date),
+    }));
+  };
+
+  const updateMaxQuantity = (date: string, maxQuantity: string) => {
+    const value = maxQuantity === "" ? null : parseInt(maxQuantity);
+    setForm((prev) => ({
+      ...prev,
+      menuDays: prev.menuDays.map((md) =>
+        md.available_date === date
+          ? { ...md, max_quantity: value }
+          : md
+      ),
     }));
   };
 
@@ -202,19 +227,23 @@ export default function MenusTab() {
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell 
+              <TableCell
                 onClick={() => handleSort("name")}
                 sx={{ cursor: "pointer", userSelect: "none" }}
               >
                 <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                   Name
                   {sortBy === "name" && (
-                    sortOrder === "asc" ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />
+                    sortOrder === "asc" ? (
+                      <ArrowUpward fontSize="small" />
+                    ) : (
+                      <ArrowDownward fontSize="small" />
+                    )
                   )}
                 </Box>
               </TableCell>
               <TableCell>Speisen</TableCell>
-              <TableCell 
+              <TableCell
                 align="right"
                 onClick={() => handleSort("price")}
                 sx={{ cursor: "pointer", userSelect: "none" }}
@@ -222,7 +251,11 @@ export default function MenusTab() {
                 <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 0.5 }}>
                   Preis
                   {sortBy === "price" && (
-                    sortOrder === "asc" ? <ArrowUpward fontSize="small" /> : <ArrowDownward fontSize="small" />
+                    sortOrder === "asc" ? (
+                      <ArrowUpward fontSize="small" />
+                    ) : (
+                      <ArrowDownward fontSize="small" />
+                    )
                   )}
                 </Box>
               </TableCell>
@@ -248,19 +281,35 @@ export default function MenusTab() {
                   </Typography>
                 </TableCell>
                 <TableCell align="right">
-                  <Typography variant="body2" color="primary" sx={{ fontWeight: 700, whiteSpace: "nowrap" }}>
-                    {menu.price.toFixed(2).replace('.', ',')}&nbsp;€
+                  <Typography
+                    variant="body2"
+                    color="primary"
+                    sx={{ fontWeight: 700, whiteSpace: "nowrap" }}
+                  >
+                    {menu.price.toFixed(2).replace(".", ",")}&nbsp;€
                   </Typography>
                 </TableCell>
                 <TableCell align="right">
                   <Box sx={{ display: "flex", gap: 0.5, justifyContent: "flex-end" }}>
-                    <IconButton size="small" color="primary" onClick={() => openEdit(menu.id)}>
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      onClick={() => openEdit(menu.id)}
+                    >
                       <EditIcon fontSize="small" />
                     </IconButton>
-                    <IconButton size="small" color="warning" onClick={() => handleCopy(menu.id)}>
+                    <IconButton
+                      size="small"
+                      color="warning"
+                      onClick={() => handleCopy(menu.id)}
+                    >
                       <ContentCopy fontSize="small" />
                     </IconButton>
-                    <IconButton size="small" color="error" onClick={() => handleDelete(menu.id, menu.name)}>
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => handleDelete(menu.id, menu.name)}
+                    >
                       <Delete fontSize="small" />
                     </IconButton>
                   </Box>
@@ -282,23 +331,30 @@ export default function MenusTab() {
 
   return (
     <Box>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-          <Typography variant="h2">Menüs</Typography>
-          <Button variant="contained" onClick={openNew} startIcon={<EditIcon />}>
-            Neues Menü
-          </Button>
-        </Box>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 3,
+        }}
+      >
+        <Typography variant="h2">Menüs</Typography>
+        <Button variant="contained" onClick={openNew} startIcon={<EditIcon />}>
+          Neues Menü
+        </Button>
+      </Box>
 
-        {loading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <>
-            {renderMenuTable(sortedActiveMenus, "Aktive Menüs")}
-            {renderMenuTable(sortedInactiveMenus, "Inaktive Menüs")}
-          </>
-        )}
+      {loading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <>
+          {renderMenuTable(sortedActiveMenus, "Aktive Menüs")}
+          {renderMenuTable(sortedInactiveMenus, "Inaktive Menüs")}
+        </>
+      )}
 
       <Dialog
         open={dialogOpen}
@@ -346,7 +402,9 @@ export default function MenusTab() {
               <Select
                 value={form.active}
                 label="Status"
-                onChange={(e) => setForm((f) => ({ ...f, active: parseInt(e.target.value as string) }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, active: parseInt(e.target.value as string) }))
+                }
               >
                 <MenuItem value={1}>Aktiv</MenuItem>
                 <MenuItem value={0}>Inaktiv</MenuItem>
@@ -367,8 +425,8 @@ export default function MenusTab() {
                     slotProps={{
                       textField: {
                         size: "small",
-                        fullWidth: true
-                      }
+                        fullWidth: true,
+                      },
                     }}
                   />
                   <Button
@@ -382,21 +440,52 @@ export default function MenusTab() {
                   </Button>
                 </Box>
               </LocalizationProvider>
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, maxHeight: 150, overflowY: "auto" }}>
-                {form.dates.length === 0 ? (
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1,
+                  maxHeight: 300,
+                  overflowY: "auto",
+                }}
+              >
+                {form.menuDays.length === 0 ? (
                   <Typography variant="body2" color="text.secondary">
                     Keine Daten ausgewählt
                   </Typography>
                 ) : (
-                  form.dates.map((d) => (
-                    <Chip
-                      key={d}
-                      label={new Date(d).toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" })}
-                      onDelete={() => removeDate(d)}
-                      size="small"
-                      color="primary"
-                      variant="outlined"
-                    />
+                  form.menuDays.map((md) => (
+                    <Box
+                      key={md.available_date}
+                      sx={{ display: "flex", gap: 1, alignItems: "center" }}
+                    >
+                      <Chip
+                        label={new Date(md.available_date).toLocaleDateString(
+                          "de-DE",
+                          {
+                            weekday: "short",
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          }
+                        )}
+                        onDelete={() => removeDate(md.available_date)}
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                        sx={{ minWidth: 180 }}
+                      />
+                      <TextField
+                        size="small"
+                        label="Max. Anzahl"
+                        type="number"
+                        inputProps={{ min: 0 }}
+                        value={md.max_quantity ?? ""}
+                        onChange={(e) => updateMaxQuantity(md.available_date, e.target.value)}
+                        placeholder="Unbegrenzt"
+                        sx={{ width: 150 }}
+                      />
+                    </Box>
                   ))
                 )}
               </Box>

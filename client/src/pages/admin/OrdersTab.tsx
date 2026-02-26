@@ -23,7 +23,7 @@ import {
     DialogContentText,
     DialogActions,
 } from "@mui/material";
-import {ArrowUpward, ArrowDownward, Delete, Refresh, Lock, LockOpen} from "@mui/icons-material";
+import {ArrowUpward, ArrowDownward, Delete, Refresh, Lock, LockOpen, Print} from "@mui/icons-material";
 import {LocalizationProvider} from "@mui/x-date-pickers/LocalizationProvider";
 import {DatePicker} from "@mui/x-date-pickers/DatePicker";
 import {AdapterDayjs} from "@mui/x-date-pickers/AdapterDayjs";
@@ -124,6 +124,90 @@ export default function OrdersTab() {
         }
     };
 
+    const handlePrint = () => {
+        if (!filterDate) return;
+
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) return;
+
+        const dateStr = filterDate.format('DD.MM.YYYY');
+        const printContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>Bestellungen ${dateStr}</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        padding: 20px;
+                    }
+                    h1 {
+                        text-align: center;
+                        margin-bottom: 30px;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-top: 20px;
+                    }
+                    th, td {
+                        border: 1px solid #000;
+                        padding: 8px;
+                        text-align: left;
+                    }
+                    th {
+                        background-color: #f0f0f0;
+                        font-weight: bold;
+                    }
+                    .checkbox-cell {
+                        width: 60px;
+                        text-align: center;
+                    }
+                    .remarks-cell {
+                        width: 200px;
+                    }
+                    @media print {
+                        body {
+                            padding: 10px;
+                        }
+                    }
+                </style>
+            </head>
+            <body>
+                <h1>Bestellungen für ${dateStr}</h1>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nr.</th>
+                            <th>Name</th>
+                            <th class="checkbox-cell">Bezahlt</th>
+                            <th class="remarks-cell">Bemerkungen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${sortedOrders.map((order, index) => `
+                            <tr>
+                                <td>${index + 1}</td>
+                                <td>${order.user_fullname || order.customer_name}</td>
+                                <td class="checkbox-cell">☐</td>
+                                <td class="remarks-cell"></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </body>
+            </html>
+        `;
+
+        printWindow.document.write(printContent);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+            printWindow.print();
+        }, 250);
+    };
+
     const handleSort = (column: "id" | "user" | "date" | "total") => {
         if (sortBy === column) {
             setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -208,10 +292,17 @@ export default function OrdersTab() {
                             onClick={loadOrders}
                             disabled={loading}
                         >
-                            Neu laden
+                            Aktualisieren
                         </Button>
-
-
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            startIcon={<Print/>}
+                            onClick={handlePrint}
+                            disabled={!filterDate || sortedOrders.length === 0}
+                        >
+                            Drucken
+                        </Button>
                     </Box>
                 </LocalizationProvider>
             </Box>

@@ -57,6 +57,7 @@ export default function UsersTab() {
   const [sortBy, setSortBy] = useState<"name" | "role">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [tempPasswordDialog, setTempPasswordDialog] = useState<{ username: string; password: string } | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -139,7 +140,9 @@ export default function UsersTab() {
         showToast("Benutzer gespeichert.");
       } else {
         const result = await createUser(form);
-        showToast(`Benutzer erstellt. QR-Token: ${result.qr_token}`);
+        const username = `${form.firstname.toLowerCase()}.${form.lastname.toLowerCase()}`;
+        setTempPasswordDialog({ username, password: result.tempPassword });
+        showToast("Benutzer erstellt.");
       }
       setDialogOpen(false);
       resetForm();
@@ -410,6 +413,42 @@ export default function UsersTab() {
           </Button>
           <Button onClick={() => setQrModal(null)} variant="contained">
             Schließen
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={!!tempPasswordDialog} onClose={() => setTempPasswordDialog(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Benutzer erfolgreich erstellt</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
+            <Alert severity="info">
+              Der Benutzer wurde erfolgreich erstellt. Bitte notiere das temporäre Passwort - es wird nur einmal angezeigt!
+            </Alert>
+            
+            <Box sx={{ bgcolor: "grey.100", p: 2, borderRadius: 1 }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Benutzername:
+              </Typography>
+              <Typography variant="h6" sx={{ fontFamily: "monospace", mb: 2 }}>
+                {tempPasswordDialog?.username}
+              </Typography>
+              
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Temporäres Passwort:
+              </Typography>
+              <Typography variant="h5" sx={{ fontFamily: "monospace", fontWeight: 700, color: "primary.main" }}>
+                {tempPasswordDialog?.password}
+              </Typography>
+            </Box>
+            
+            <Alert severity="warning">
+              Der Benutzer sollte das Passwort nach dem ersten Login ändern.
+            </Alert>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTempPasswordDialog(null)} variant="contained">
+            Verstanden
           </Button>
         </DialogActions>
       </Dialog>
