@@ -16,8 +16,8 @@ COPY server/ ./
 # Copy React build into expected location
 COPY --from=frontend-builder /app/client/dist ../client/dist
 
-# Data directory for SQLite
-RUN mkdir -p /data
+# Data directory for SQLite (will be mounted as volume)
+RUN mkdir -p /data && chmod 755 /data
 
 EXPOSE 3001
 

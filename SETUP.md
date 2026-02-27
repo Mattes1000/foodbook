@@ -102,6 +102,32 @@ Dies startet:
 - SQLite
 - REST API
 
+## 🚂 Railway Deployment
+
+### Volume für persistente Datenbank einrichten
+
+1. **Volume erstellen:**
+   - Öffne dein Railway-Projekt
+   - Drücke `⌘K` (Command Palette) oder Rechtsklick auf Canvas
+   - Wähle "Create Volume"
+   - Wähle deinen Service aus
+   - Mount Path: `/data`
+
+2. **Umgebungsvariable setzen:**
+   - Gehe zu deinem Service → Variables
+   - Füge hinzu: `DATABASE_PATH=/data/foodbook.db`
+
+3. **Automatische Variablen:**
+   Railway stellt automatisch bereit:
+   - `RAILWAY_VOLUME_NAME` - Name des Volumes
+   - `RAILWAY_VOLUME_MOUNT_PATH` - Mount-Pfad (z.B. `/data`)
+
+### Wichtig:
+- Das Volume wird beim Container-Start gemountet (nicht beim Build)
+- Daten im Volume bleiben bei Deployments erhalten
+- Das Seed-Script ist idempotent - existierende Daten werden nicht überschrieben
+- Admin/Test-User werden bei Bedarf automatisch angelegt
+
 ## 📝 Hinweise
 
 - Speisen können in mehreren Menüs verwendet werden
