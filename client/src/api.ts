@@ -19,7 +19,7 @@ export async function getAllMenus(): Promise<Menu[]> {
   return res.json();
 }
 
-export async function getMenu(id: number): Promise<Menu & { dates: string[] }> {
+export async function getMenu(id: number): Promise<Menu & { dates: string[]; menuDays: MenuDay[] }> {
   const res = await fetch(`${BASE}/menus/${id}`);
   return res.json();
 }

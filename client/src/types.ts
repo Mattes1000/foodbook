@@ -5,6 +5,7 @@ export interface Menu {
   price: number;
   active: number;
   dates: string;
+  menuDays?: { available_date: string; max_quantity: number | null }[];
   created_at?: string;
 }
 
